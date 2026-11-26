@@ -16,8 +16,11 @@
   .hidden{display:none !important}
 
   /* ---------- generic screen ---------- */
-  .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow-y:auto;
+  .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:flex-start;flex-direction:column;overflow-y:auto;
     background:radial-gradient(ellipse at 50% 35%,rgba(10,40,60,.88),rgba(2,6,10,.96) 75%);z-index:40;padding:18px;text-align:center}
+  .screen>*{flex:none}
+  .screen>*:first-child{margin-top:auto}
+  .screen>*:last-child{margin-bottom:auto}
   .screen::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
     background:repeating-linear-gradient(0deg,rgba(125,249,255,.03) 0 1px,transparent 1px 3px)}
   .kicker{letter-spacing:.45em;font-size:11px;color:var(--amber);text-transform:uppercase}
@@ -183,6 +186,21 @@
   #btn-boost{right:30px;bottom:104px}
   #autofire-tag{position:absolute;right:34px;bottom:282px;font-size:10px;letter-spacing:.2em;color:var(--amber)}
   @media(pointer:fine){#touch{display:none}}
+
+  /* ---------- touch layout: thumb zones, no overlaps ---------- */
+  #stick-base{touch-action:none}
+  .tbtn{touch-action:none}
+  body.touch #stick-base{left:20px;bottom:18px;width:132px;height:132px}
+  body.touch #hud-bottom-left{left:162px;bottom:18px;min-width:178px}
+  body.touch #btn-pause{top:auto;bottom:162px;left:20px}
+  body.touch #btn-camera{top:auto;bottom:162px;left:118px;right:auto}
+  body.touch #btn-end-sortie{position:absolute;top:auto !important;bottom:200px;left:20px}
+  body.touch #radar-wrap{bottom:174px;right:18px;width:100px;height:100px}
+  body.touch #radar{width:100px;height:100px}
+  body.touch #btn-missile{right:56px;bottom:96px}
+  body.touch #btn-roll{right:98px;bottom:18px}
+  body.touch #btn-boost{right:18px;bottom:18px}
+  body.touch #autofire-tag{display:none}
 </style>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
@@ -1548,6 +1566,7 @@ const keys = {};
 let joy = { x: 0, y: 0, active: false };
 let touchBoost = false;
 const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches;
+document.body.classList.toggle('touch', IS_TOUCH);
 function playerForward() { return _v1.set(0, 0, -1).applyQuaternion(player.group.quaternion); }
 function updatePlayer(dt) {
   const up = SAVE.upgrades;
@@ -2224,11 +2243,13 @@ let paused = false;
 function togglePause() {
   if (state !== 'flying' && !paused) return;
   paused = !paused;
-  showBanner(paused ? 'PAUSED' : 'RESUMED', paused ? 'PRESS P TO RESUME' : '', paused ? 999999 : 800);
+  showBanner(paused ? 'PAUSED' : 'RESUMED', paused ? (IS_TOUCH ? 'TAP TO RESUME' : 'PRESS P TO RESUME') : '', paused ? 999999 : 800);
+  el('banner').style.pointerEvents = paused ? 'auto' : 'none';
   if (!paused) el('banner').classList.add('hidden');
 }
 el('btn-camera').addEventListener('click', toggleCamera);
 el('btn-pause').addEventListener('click', togglePause);
+el('banner').addEventListener('click', () => { if (paused) togglePause(); });
 el('btn-end-sortie').addEventListener('click', endSortie);
 // touch joystick
 const stickBase = el('stick-base'), stickKnob = el('stick-knob');
@@ -2238,10 +2259,12 @@ function stickMove(e) {
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   let dx = (e.clientX - cx) / (r.width / 2), dy = (e.clientY - cy) / (r.height / 2);
   const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
+  if (Math.abs(dx) < 0.09) dx = 0;
+  if (Math.abs(dy) < 0.09) dy = 0;
   joy.x = dx; joy.y = dy; joy.active = true;
-  stickKnob.style.transform = `translate(calc(-50% + ${dx * 34}px), calc(-50% + ${dy * 34}px))`;
+  stickKnob.style.transform = `translate(calc(-50% + ${dx * 40}px), calc(-50% + ${dy * 40}px))`;
 }
-stickBase.addEventListener('pointerdown', e => { stickId = e.pointerId; stickBase.setPointerCapture(stickId); stickMove(e); });
+stickBase.addEventListener('pointerdown', e => { e.preventDefault(); stickId = e.pointerId; stickBase.setPointerCapture(stickId); stickMove(e); });
 stickBase.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickMove(e); });
 const stickEnd = e => { if (e.pointerId === stickId) { stickId = null; joy = { x: 0, y: 0, active: false }; stickKnob.style.transform = 'translate(-50%,-50%)'; } };
 stickBase.addEventListener('pointerup', stickEnd);
