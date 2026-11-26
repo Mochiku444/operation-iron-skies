@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OPERATION: IRON SKIES — Squadron 07</title>
+<style>
+  :root{
+    --hud:#7df9ff; --hud-dim:rgba(125,249,255,.55); --amber:#ffb454; --red:#ff5252;
+    --panel:rgba(6,18,28,.82); --line:rgba(125,249,255,.35);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",Arial,Helvetica,sans-serif;color:#dff7ff}
+  #game{position:fixed;inset:0}
+  canvas{display:block}
+  .hidden{display:none !important}
+
+  /* ---------- generic screen ---------- */
+  .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow-y:auto;
+    background:radial-gradient(ellipse at 50% 35%,rgba(10,40,60,.88),rgba(2,6,10,.96) 75%);z-index:40;padding:18px;text-align:center}
+  .screen::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background:repeating-linear-gradient(0deg,rgba(125,249,255,.03) 0 1px,transparent 1px 3px)}
+  .kicker{letter-spacing:.45em;font-size:11px;color:var(--amber);text-transform:uppercase}
+  h1.title{font-size:clamp(30px,7vw,64px);letter-spacing:.12em;color:#eafcff;text-shadow:0 0 22px rgba(125,249,255,.65),0 0 60px rgba(0,140,255,.4);margin:8px 0 2px}
+  .subtitle{letter-spacing:.3em;font-size:clamp(10px,2.4vw,14px);color:var(--hud-dim);text-transform:uppercase}
+  .narration{max-width:640px;margin:16px auto 4px;font-size:clamp(13px,2.4vw,17px);line-height:1.65;color:#cfeef7}
+  .narration .hot{color:#fff;font-weight:700;text-shadow:0 0 12px rgba(255,180,84,.8)}
+  .callsign{display:inline-block;margin-top:14px;padding:6px 18px;border:1px solid var(--line);color:var(--hud);
+    letter-spacing:.25em;font-size:12px;background:rgba(125,249,255,.06)}
+  .btn{pointer-events:auto;cursor:pointer;margin-top:30px;padding:15px 42px;font-size:clamp(14px,2.8vw,18px);font-weight:700;
+    letter-spacing:.18em;color:#031018;background:linear-gradient(180deg,#9ff3ff,#37b6d9);border:none;border-radius:3px;
+    box-shadow:0 0 24px rgba(125,249,255,.45);text-transform:uppercase}
+  .btn:hover{filter:brightness(1.12)} .btn:active{transform:scale(.97)}
+  .btn.ghost{background:transparent;color:var(--hud);border:1px solid var(--line);box-shadow:none}
+  .btn.small{padding:10px 22px;font-size:13px;margin-top:0}
+  .btn:disabled{opacity:.35;cursor:default;filter:grayscale(.6)}
+  .controls-note{margin-top:22px;font-size:12px;line-height:1.9;color:#8fb7c4;letter-spacing:.06em}
+  .controls-note b{color:#dff7ff}
+
+  /* ---------- briefing / debrief / upgrade ---------- */
+  .panel{position:relative;max-width:680px;width:100%;background:var(--panel);border:1px solid var(--line);
+    padding:26px 28px;text-align:left;box-shadow:0 0 40px rgba(0,0,0,.6)}
+  .panel h2{font-size:clamp(19px,4vw,26px);letter-spacing:.1em;color:#fff;margin-bottom:4px}
+  .panel .obj{margin:14px 0;line-height:1.7;color:#cfeef7;font-size:15px}
+  .panel .meta{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;letter-spacing:.15em;color:var(--amber);text-transform:uppercase}
+  .rowline{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed rgba(125,249,255,.18);font-size:15px}
+  .rowline b{color:#fff}
+  .upgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+  @media(max-width:560px){.upgrid{grid-template-columns:1fr}}
+  .upcard{border:1px solid var(--line);padding:12px 14px;background:rgba(125,249,255,.04)}
+  .upcard h3{font-size:14px;letter-spacing:.08em;color:#fff}
+  .upcard p{font-size:12px;color:#9fc6d2;line-height:1.5;margin:5px 0 9px}
+  .pips{font-size:13px;color:var(--amber);letter-spacing:.2em}
+  .center{text-align:center}
+  /* ---------- lobby ---------- */
+  .lobby-wrap{position:relative;width:100%;max-width:880px;max-height:100%;overflow-y:auto}
+  .lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  @media(max-width:640px){.lobby-grid{grid-template-columns:1fr}}
+  .mission-btn{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin-top:8px;
+    padding:11px 14px;background:rgba(125,249,255,.05);border:1px solid var(--line);color:#dff7ff;cursor:pointer;font-family:inherit}
+  .mission-btn small{display:block;color:#8fb7c4;letter-spacing:.08em;margin-top:2px}
+  .mission-btn.sel{border-color:var(--amber);background:rgba(255,180,84,.12);box-shadow:0 0 14px rgba(255,180,84,.25)}
+  .mission-btn:disabled{opacity:.38;cursor:default}
+  .pilot-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:14px;margin-top:10px}
+  .pilot-stats span{color:#8fb7c4;letter-spacing:.1em;font-size:11.5px;text-transform:uppercase}
+  .pilot-stats b{color:#fff;text-align:right}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:20;font-family:"Consolas","Menlo",monospace}
+  .hudbox{background:rgba(4,16,24,.55);border:1px solid var(--line);padding:7px 11px}
+  #hud-top-left{position:absolute;top:12px;left:12px;min-width:190px}
+  #hud-mission{font-size:11px;letter-spacing:.18em;color:var(--amber)}
+  #hud-objective{font-size:12.5px;color:#eafcff;margin-top:3px;max-width:250px;line-height:1.45}
+  #hud-top-right{position:absolute;top:12px;right:12px;text-align:right}
+  #hud-score{font-size:19px;color:#fff;font-weight:700}
+  #hud-rank{font-size:11px;letter-spacing:.15em;color:var(--hud)}
+  #hud-credits{font-size:12px;color:var(--amber)}
+  #hud-bottom-left{position:absolute;left:12px;bottom:12px;min-width:210px}
+  .barlabel{font-size:10.5px;letter-spacing:.2em;color:var(--hud-dim);display:flex;justify-content:space-between}
+  .bar{height:11px;border:1px solid var(--line);margin:3px 0 9px;background:rgba(255,255,255,.05)}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,#27e07c,#a8ffb0);transition:width .15s}
+  .bar.hull>i.low{background:linear-gradient(90deg,#ff4040,#ffb454)}
+  .bar.boost>i{background:linear-gradient(90deg,#37b6d9,#9ff3ff)}
+  #hud-gauges{display:flex;gap:16px;font-size:12px;color:#cfeef7}
+  #hud-gauges b{color:#fff;font-size:15px}
+  #radar-wrap{position:absolute;right:12px;bottom:12px;width:148px;height:148px}
+  #radar{width:148px;height:148px;border-radius:50%;border:1px solid var(--line);background:rgba(3,20,14,.6)}
+  #radar-label{position:absolute;top:-16px;right:2px;font-size:10px;letter-spacing:.25em;color:var(--hud-dim)}
+  #crosshair{position:absolute;left:50%;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);opacity:.9}
+  #crosshair::before,#crosshair::after{content:"";position:absolute;background:var(--hud)}
+  #crosshair::before{left:50%;top:0;width:1.5px;height:100%;transform:translateX(-50%);
+    background:linear-gradient(180deg,var(--hud) 0 30%,transparent 30% 70%,var(--hud) 70% 100%)}
+  #crosshair::after{top:50%;left:0;height:1.5px;width:100%;transform:translateY(-50%);
+    background:linear-gradient(90deg,var(--hud) 0 30%,transparent 30% 70%,var(--hud) 70% 100%)}
+  #lockbox{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;border:2px solid var(--red);display:none;
+    box-shadow:0 0 14px rgba(255,82,82,.5) inset}
+  #lockbox .lk{position:absolute;left:50%;top:100%;transform:translateX(-50%);font-size:10px;color:var(--red);letter-spacing:.15em;white-space:nowrap}
+  #lockprog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:var(--amber);letter-spacing:.2em;text-shadow:0 0 8px #000}
+  #banner{position:absolute;left:50%;top:19%;transform:translateX(-50%);text-align:center;width:100%}
+  #banner-main{font-size:clamp(20px,5vw,34px);font-weight:700;letter-spacing:.22em;color:#fff;text-shadow:0 0 18px rgba(255,180,84,.7)}
+  #banner-sub{font-size:clamp(11px,2.6vw,14px);letter-spacing:.3em;color:var(--amber);margin-top:5px}
+  #warning{position:absolute;left:50%;top:64%;transform:translateX(-50%);font-size:14px;letter-spacing:.3em;color:var(--red);
+    text-shadow:0 0 10px rgba(255,0,0,.8);animation:blink .5s steps(2) infinite}
+  @keyframes blink{50%{opacity:.15}}
+  #hitmarker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:26px;color:#fff;opacity:0;text-shadow:0 0 8px var(--amber)}
+  #ladder{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:230px;height:230px;opacity:.55}
+  .hudbtn{pointer-events:auto;cursor:pointer;background:rgba(4,16,24,.6);border:1px solid var(--line);color:var(--hud);
+    font-family:inherit;font-size:11px;letter-spacing:.15em;padding:8px 12px;text-transform:uppercase}
+  .hudbtn:active{background:rgba(125,249,255,.25)}
+  #btn-camera{position:absolute;top:118px;right:12px}
+  #btn-pause{position:absolute;top:118px;left:12px}
+
+  /* ---------- touch controls ---------- */
+  #touch{position:fixed;inset:0;z-index:25;pointer-events:none}
+  #stick-base{position:absolute;left:26px;bottom:96px;width:124px;height:124px;border-radius:50%;
+    border:2px solid rgba(125,249,255,.4);background:rgba(125,249,255,.06);pointer-events:auto}
+  #stick-knob{position:absolute;left:50%;top:50%;width:54px;height:54px;border-radius:50%;transform:translate(-50%,-50%);
+    background:rgba(125,249,255,.35);border:2px solid rgba(125,249,255,.7)}
+  .tbtn{position:absolute;pointer-events:auto;width:64px;height:64px;border-radius:50%;border:2px solid rgba(125,249,255,.55);
+    background:rgba(10,30,44,.55);color:var(--hud);font-size:10px;letter-spacing:.08em;font-family:inherit;text-transform:uppercase}
+  .tbtn:active{background:rgba(125,249,255,.35)}
+  #btn-missile{right:30px;bottom:196px;border-color:rgba(255,82,82,.7);color:#ffb3b3}
+  #btn-roll{right:108px;bottom:110px}
+  #btn-boost{right:30px;bottom:104px}
+  #autofire-tag{position:absolute;right:34px;bottom:282px;font-size:10px;letter-spacing:.2em;color:var(--amber)}
+  @media(pointer:fine){#touch{display:none}}
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="game"></div>
+
+<!-- ================= HUD ================= -->
+<div id="hud" class="hidden">
+  <div id="hud-top-left" class="hudbox">
+    <div id="hud-mission">MISSION 01 — FIRST CONTACT</div>
+    <div id="hud-objective">Destroy all enemy fighters</div>
+  </div>
+  <div id="hud-top-right" class="hudbox">
+    <div id="hud-score">0</div>
+    <div id="hud-rank">RANK: ROOKIE</div>
+    <div id="hud-credits">⬡ 0 CR</div>
+  </div>
+  <button id="btn-pause" class="hudbtn">II Pause</button>
+  <button id="btn-camera" class="hudbtn">Cam: Chase</button>
+  <div id="hud-bottom-left" class="hudbox">
+    <div class="barlabel"><span>HULL INTEGRITY</span><span id="hull-num">100%</span></div>
+    <div class="bar hull"><i id="hull-bar" style="width:100%"></i></div>
+    <div class="barlabel"><span>AFTERBURNER</span><span id="missile-num">MSL 4</span></div>
+    <div class="bar boost"><i id="boost-bar" style="width:100%"></i></div>
+    <div id="hud-gauges">
+      <span>SPD <b id="gauge-spd">0</b> kt</span>
+      <span>ALT <b id="gauge-alt">0</b> ft</span>
+      <span>HDG <b id="gauge-hdg">000</b>°</span>
+    </div>
+  </div>
+  <div id="radar-wrap"><div id="radar-label">RADAR</div><canvas id="radar" width="296" height="296"></canvas></div>
+  <canvas id="ladder" width="460" height="460" class="hidden"></canvas>
+  <div id="crosshair"></div>
+  <div id="lockbox"><div class="lk">◈ LOCKED — FIRE MISSILE</div></div>
+  <div id="lockprog"></div>
+  <div id="hitmarker">✕</div>
+  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div></div>
+  <div id="warning" class="hidden">⚠ WARNING ⚠</div>
+</div>
+
+<!-- ================= TOUCH ================= -->
+<div id="touch" class="hidden">
+  <div id="stick-base"><div id="stick-knob"></div></div>
+  <div id="autofire-tag">AUTO-FIRE: ON</div>
+  <button class="tbtn" id="btn-missile">Missile</button>
+  <button class="tbtn" id="btn-roll">Roll</button>
+  <button class="tbtn" id="btn-boost">Boost</button>
+</div>
+
+<!-- ================= START / NARRATION ================= -->
+<div id="screen-start" class="screen">
+  <div class="kicker">Republic of Asteria · Air Command</div>
+  <h1 class="title">OPERATION: IRON SKIES</h1>
+  <div class="subtitle">Squadron 07 · Callsign “PHANTOM”</div>
+  <div class="narration">
+    <p>November 2032. War has changed the face of the world.</p>
+    <p>Nations fall. Cities burn. The skies that once symbolized freedom are now a battleground.</p>
+    <p>Varkovia thought they could conquer the world through air power.</p>
+    <p>But they forgot one thing.</p>
+    <p class="hot">As long as pilots are willing to fly, Asteria is not defeated yet.</p>
+  </div>
+  <div class="callsign">⚠ INCOMING TRANSMISSION — VARKOVIA FEDERATION AIRSPACE VIOLATION CONFIRMED</div>
+  <button class="btn" id="btn-start">Pilot, Start Your Engines — Operation Iron Skies</button>
+  <div class="controls-note">
+    <b>PC:</b> W/S or ↑/↓ pitch · A/D or ←/→ bank · <b>SPACE</b> fire cannon · <b>F</b> missile · <b>Q/E</b> barrel roll · <b>SHIFT</b> afterburner · <b>C</b> camera · <b>P</b> pause<br>
+    <b>Mobile:</b> virtual joystick to fly · cannon auto-fires at targets ahead · tap MISSILE / ROLL / BOOST
+  </div>
+</div>
+
+<!-- ================= LOBBY / HANGAR ================= -->
+<div id="screen-lobby" class="screen hidden">
+  <div class="lobby-wrap">
+    <div class="kicker" style="text-align:center">Squadron 07 · Hangar</div>
+    <h1 class="title" style="font-size:clamp(24px,5vw,40px)">LOBBY</h1>
+    <div class="lobby-grid">
+      <div class="panel">
+        <div class="kicker">Pilot Card</div>
+        <h2>CALLSIGN “PHANTOM”</h2>
+        <div class="pilot-stats">
+          <span>Reputation</span><b id="lobby-rank">ROOKIE</b>
+          <span>Total score</span><b id="lobby-score">0</b>
+          <span>Credits</span><b id="lobby-credits">0 CR</b>
+          <span>Confirmed kills</span><b id="lobby-kills">0</b>
+          <span>Aircraft</span><b>F/A-07 PHANTOM</b>
+        </div>
+        <div class="kicker" style="margin-top:20px">Select Mission</div>
+        <div id="lobby-missions"></div>
+        <div class="center"><button class="btn" id="btn-lobby-launch">▶ Briefing & Launch</button></div>
+      </div>
+      <div class="panel">
+        <div class="kicker">Hangar — Upgrades</div>
+        <h2>ARMORY & WORKSHOP</h2>
+        <p class="obj" style="margin:8px 0 2px">Spend mission credits here. Upgrades apply to every mission you fly afterwards.</p>
+        <div class="upgrid" id="lobby-upgrades" style="grid-template-columns:1fr"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= BRIEFING ================= -->
+<div id="screen-brief" class="screen hidden">
+  <div class="panel">
+    <div class="kicker">Mission Briefing</div>
+    <h2 id="brief-title">MISSION 01 — FIRST CONTACT</h2>
+    <div class="meta"><span id="brief-loc">ASTERIA CENTRAL AIRBASE</span><span id="brief-time">DAWN · 05:47</span></div>
+    <p class="obj" id="brief-obj"></p>
+    <div class="rowline"><span>Primary targets</span><b id="brief-targets">—</b></div>
+    <div class="rowline"><span>Your reputation</span><b id="brief-rank">ROOKIE</b></div>
+    <div class="rowline"><span>Credits available</span><b id="brief-credits">0 CR</b></div>
+    <div class="center"><button class="btn" id="btn-launch">▶ Launch Mission</button></div>
+  </div>
+</div>
+
+<!-- ================= DEBRIEF / UPGRADES ================= -->
+<div id="screen-debrief" class="screen hidden">
+  <div class="panel">
+    <div class="kicker" id="debrief-kicker">Mission Complete</div>
+    <h2 id="debrief-title">MISSION 01 — CLEARED</h2>
+    <div id="debrief-rows"></div>
+    <div class="upgrid" id="upgrade-grid"></div>
+    <div class="center" style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="btn ghost" id="btn-retry">↻ Retry Mission</button>
+      <button class="btn" id="btn-next">Next Mission ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CAMPAIGN END ================= -->
+<div id="screen-end" class="screen hidden">
+  <div class="kicker">Varkovia Federation — Air Command Destroyed</div>
+  <h1 class="title">ASTERIA IS FREE</h1>
+  <div class="narration">
+    <p>The Iron Skies are silent. The cruiser burns, the aces are gone, and dawn breaks over a free republic.</p>
+    <p class="hot">They forgot one thing, Phantom. As long as pilots are willing to fly — Asteria will never fall.</p>
+  </div>
+  <div class="callsign" id="end-stats">—</div>
+  <button class="btn" id="btn-again">Fly The Campaign Again</button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ================================================================
+   OPERATION: IRON SKIES — a complete 3D fighter-jet campaign.
+   One file. Three.js from CDN, Web Audio for every sound, and all
+   models built procedurally from geometry. No external assets.
+   ================================================================ */
+
+// ------------------------------------------------------------------
+// 1. AUDIO — Web Audio API. The context is created up front and
+//    resumed on the start click (browser autoplay policy).
+// ------------------------------------------------------------------
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const SoundFX = {
+  shoot: () => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+  },
+  explosion: () => {
+    const bufferSize = audioCtx.sampleRate * 0.4;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(600, audioCtx.currentTime);
+    filter.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    noise.start();
+  },
+  // --- additions in the same style ---
+  enemyShoot: () => blip(520, 90, 0.1, 'square', 0.05),
+  missile: () => {
+    noiseBurst(0.7, 900, 300, 0.16);
+    blip(180, 620, 0.5, 'sawtooth', 0.06);
+  },
+  lockBeep: () => blip(1250, 1250, 0.06, 'square', 0.06),
+  locked: () => { blip(1560, 1560, 0.09, 'square', 0.09); setTimeout(() => blip(1560, 1560, 0.09, 'square', 0.09), 110); },
+  hit: () => blip(300, 140, 0.07, 'triangle', 0.1),
+  hurt: () => { noiseBurst(0.25, 500, 120, 0.22); blip(140, 70, 0.25, 'sawtooth', 0.12); },
+  bigExplosion: () => { SoundFX.explosion(); setTimeout(() => SoundFX.explosion(), 130); noiseBurst(1.1, 300, 40, 0.3); },
+  roll: () => noiseBurst(0.35, 1200, 2400, 0.05),
+  alarm: () => { blip(720, 720, 0.14, 'square', 0.05); setTimeout(() => blip(720, 720, 0.14, 'square', 0.05), 190); },
+  radio: () => { blip(980, 740, 0.07, 'sine', 0.05); setTimeout(() => blip(1240, 1240, 0.05, 'sine', 0.04), 90); },
+  upgrade: () => { blip(660, 660, 0.09, 'triangle', 0.1); setTimeout(() => blip(990, 990, 0.12, 'triangle', 0.1), 100); },
+};
+function blip(f0, f1, dur, type, vol) {
+  if (audioCtx.state === 'suspended') return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(f0, t);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+  gain.gain.setValueAtTime(vol, t);
+  gain.gain.exponentialRampToValueAtTime(0.005, t + dur);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(t + dur);
+}
+function noiseBurst(dur, f0, f1, vol) {
+  if (audioCtx.state === 'suspended') return;
+  const t = audioCtx.currentTime;
+  const len = Math.floor(audioCtx.sampleRate * dur);
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const flt = audioCtx.createBiquadFilter(); flt.type = 'lowpass';
+  flt.frequency.setValueAtTime(f0, t);
+  flt.frequency.linearRampToValueAtTime(Math.max(40, f1), t + dur);
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(vol, t);
+  gain.gain.exponentialRampToValueAtTime(0.005, t + dur);
+  src.connect(flt); flt.connect(gain); gain.connect(audioCtx.destination);
+  src.start();
+}
+// Continuous engine: two detuned saws (run) crossfaded against a low
+// triangle (idle) by speed, plus wind noise — smoothed, no jitter.
+const EngineAudio = {
+  started: false, blend: 0, rpm: 0,
+  start() {
+    if (this.started) return; this.started = true;
+    const ctx = audioCtx;
+    this.idleOsc = ctx.createOscillator(); this.idleOsc.type = 'triangle'; this.idleOsc.frequency.value = 48;
+    this.idleGain = ctx.createGain(); this.idleGain.gain.value = 0;
+    this.idleOsc.connect(this.idleGain); this.idleGain.connect(ctx.destination); this.idleOsc.start();
+    this.runOsc = ctx.createOscillator(); this.runOsc.type = 'sawtooth';
+    this.runOsc2 = ctx.createOscillator(); this.runOsc2.type = 'square';
+    this.runFilter = ctx.createBiquadFilter(); this.runFilter.type = 'lowpass'; this.runFilter.frequency.value = 260;
+    this.runGain = ctx.createGain(); this.runGain.gain.value = 0;
+    this.runOsc.connect(this.runFilter); this.runOsc2.connect(this.runFilter);
+    this.runFilter.connect(this.runGain); this.runGain.connect(ctx.destination);
+    this.runOsc.start(); this.runOsc2.start();
+    const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    this.wind = ctx.createBufferSource(); this.wind.buffer = buf; this.wind.loop = true;
+    this.windFilter = ctx.createBiquadFilter(); this.windFilter.type = 'bandpass'; this.windFilter.frequency.value = 500;
+    this.windGain = ctx.createGain(); this.windGain.gain.value = 0;
+    this.wind.connect(this.windFilter); this.windFilter.connect(this.windGain); this.windGain.connect(ctx.destination);
+    this.wind.start();
+  },
+  update(speedRatio, boosting, dt) {
+    if (!this.started) return;
+    const t = audioCtx.currentTime;
+    const targetBlend = THREE.MathUtils.smoothstep(speedRatio, 0.02, 0.45);
+    this.blend += (targetBlend - this.blend) * Math.min(1, dt * 5);
+    let targetRpm = speedRatio + (boosting ? 0.22 : 0);
+    this.rpm += (targetRpm - this.rpm) * Math.min(1, dt * 4.5);
+    const idle = Math.cos(this.blend * Math.PI * 0.5) * 0.05;
+    const run = Math.sin(this.blend * Math.PI * 0.5) * (0.028 + this.rpm * 0.05);
+    this.idleGain.gain.setTargetAtTime(idle, t, 0.1);
+    this.runGain.gain.setTargetAtTime(run, t, 0.1);
+    const f = 40 + this.rpm * 118;
+    this.runOsc.frequency.setTargetAtTime(f, t, 0.08);
+    this.runOsc2.frequency.setTargetAtTime(f * 0.5 + 1.5, t, 0.08);
+    this.runFilter.frequency.setTargetAtTime(220 + this.rpm * 700, t, 0.1);
+    this.windGain.gain.setTargetAtTime(Math.min(0.085, speedRatio * 0.075), t, 0.2);
+    this.windFilter.frequency.setTargetAtTime(300 + speedRatio * 900, t, 0.2);
+  },
+};
+// Siren + radio ambience behind the narration screen (starts on the
+// start click, when the context resumes).
+const Ambience = {
+  nodes: [],
+  start() {
+    const ctx = audioCtx, t = ctx.currentTime;
+    const gain = ctx.createGain(); gain.gain.value = 0.0; gain.connect(ctx.destination);
+    gain.gain.linearRampToValueAtTime(0.035, t + 2.5);
+    const osc = ctx.createOscillator(); osc.type = 'sine';
+    osc.frequency.setValueAtTime(640, t);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.28;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 130;
+    lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+    osc.connect(gain); osc.start(); lfo.start();
+    const radioGain = ctx.createGain(); radioGain.gain.value = 0.012; radioGain.connect(ctx.destination);
+    const len = ctx.sampleRate, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
+    const noise = ctx.createBufferSource(); noise.buffer = buf; noise.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1600; bp.Q.value = 2.5;
+    noise.connect(bp); bp.connect(radioGain); noise.start();
+    this.nodes = [osc, lfo, noise];
+    this.gains = [gain, radioGain];
+  },
+  stop() {
+    const t = audioCtx.currentTime;
+    for (const g of this.gains || []) g.gain.linearRampToValueAtTime(0, t + 0.8);
+    setTimeout(() => this.nodes.forEach(n => { try { n.stop(); } catch (e) {} }), 900);
+    this.nodes = [];
+  },
+};
+// ================================================================
+// 2. CORE SETUP
+// ================================================================
+const container = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.5, 12000);
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = THREE.MathUtils.clamp;
+const WORLD_R = 4200;           // soft combat boundary
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();
+const _q1 = new THREE.Quaternion();
+
+// ================================================================
+// 3. PROCEDURAL JET BUILDERS — geometry only, no model files.
+// ================================================================
+function jetMaterials(body, accent, canopy) {
+  return {
+    body: new THREE.MeshStandardMaterial({ color: body, metalness: 0.65, roughness: 0.38 }),
+    accent: new THREE.MeshStandardMaterial({ color: accent, metalness: 0.5, roughness: 0.45 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x14181d, metalness: 0.4, roughness: 0.6 }),
+    canopy: new THREE.MeshStandardMaterial({ color: canopy, metalness: 0.9, roughness: 0.12, emissive: canopy, emissiveIntensity: 0.55 }),
+  };
+}
+function buildJet(o) {
+  // o: {body, accent, canopy, swept:'back'|'forward', flame:color}
+  const M = jetMaterials(o.body, o.accent, o.canopy);
+  const g = new THREE.Group();
+  const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.scale.set(sx, sy, sz);
+    g.add(m); return m;
+  };
+  // Fuselage: stretched body + nose cone (jet faces -Z? we use +Z forward via lookAt convention below)
+  const fus = add(new THREE.CylinderGeometry(0.85, 1.15, 9.5, 10), M.body, 0, 0, 0.6, Math.PI / 2);
+  fus.scale.set(1, 1, 0.82);
+  const nose = add(new THREE.ConeGeometry(0.85, 4.6, 10), M.body, 0, 0, -3.1, -Math.PI / 2);
+  nose.scale.set(1, 1, 0.82);
+  add(new THREE.SphereGeometry(0.8, 10, 8), M.canopy, 0, 0.62, -1.15, 0, 0, 0, 1, 0.62, 1.9); // cockpit canopy
+  add(new THREE.BoxGeometry(1.5, 0.5, 3.4), M.dark, 0, -0.28, 3.1);                            // intake block
+  add(new THREE.BoxGeometry(0.16, 1.5, 2.2), M.accent, 0, 0.75, 4.4, -0.25);                   // spine fin
+  // Main wings — delta (player) swept back; enemy forward-swept
+  const sweep = o.swept === 'forward' ? -0.62 : 0.62;
+  const wingGeo = new THREE.BoxGeometry(6.4, 0.14, 2.6);
+  const wl = add(wingGeo, M.accent, -3.4, -0.12, 1.4, 0, sweep, 0.1);
+  const wr = add(wingGeo, M.accent, 3.4, -0.12, 1.4, 0, -sweep, -0.1);
+  // Twin tail fins
+  add(new THREE.BoxGeometry(0.14, 1.7, 1.6), M.accent, -0.95, 0.85, 4.3, -0.3, 0, 0.28);
+  add(new THREE.BoxGeometry(0.14, 1.7, 1.6), M.accent, 0.95, 0.85, 4.3, -0.3, 0, -0.28);
+  add(new THREE.BoxGeometry(3.4, 0.12, 1.3), M.accent, 0, 0.15, 4.6, 0, 0, 0);                 // tailplane
+  // Wing stores (decorative missiles)
+  for (const sx of [-2.5, 2.5]) {
+    add(new THREE.CylinderGeometry(0.16, 0.16, 1.9, 6), M.dark, sx, -0.42, 1.2, Math.PI / 2);
+    add(new THREE.ConeGeometry(0.16, 0.5, 6), M.dark, sx, -0.42, 0.05, -Math.PI / 2);
+  }
+  // Afterburner flames: two additive cones that scale with throttle
+  const flameMat = new THREE.MeshBasicMaterial({ color: o.flame, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+  const flames = [];
+  for (const sx of [-0.45, 0.45]) {
+    const f = add(new THREE.ConeGeometry(0.34, 3.4, 8), flameMat, sx, 0, 6.6, Math.PI / 2);
+    flames.push(f);
+    add(new THREE.CylinderGeometry(0.3, 0.38, 0.7, 8), M.dark, sx, 0, 5.1, Math.PI / 2);      // nozzle
+  }
+  g.userData.flames = flames;
+  g.userData.wings = [wl, wr];
+  return g;
+}
+const buildPlayerJet = () => buildJet({ body: 0xb9c9d9, accent: 0x2e6fb0, canopy: 0x54e0ff, swept: 'back', flame: 0xff8c3a });
+const buildEnemyJet = () => buildJet({ body: 0x2b2f36, accent: 0xa01622, canopy: 0xffc93a, swept: 'forward', flame: 0xff3b30 });
+const buildWingmanJet = () => buildJet({ body: 0x9fb4c8, accent: 0x27c46b, canopy: 0x54e0ff, swept: 'back', flame: 0xff8c3a });
+
+// ================================================================
+// 4. PARTICLES — one pooled Points system for sparks, one for smoke.
+// ================================================================
+// Soft round sprite so points read as puffs/sparks, not squares.
+const dotTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.4, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+class ParticlePool {
+  constructor(n, { size, color = 0xffffff, additive = true, opacity = 0.9, gravity = 0, drag = 1 }) {
+    this.n = n; this.gravity = gravity; this.drag = drag;
+    this.pos = new Float32Array(n * 3);
+    this.vel = new Float32Array(n * 3);
+    this.life = new Float32Array(n);
+    this.maxLife = new Float32Array(n);
+    this.col = new Float32Array(n * 3);
+    this.head = 0;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(this.col, 3));
+    const mat = new THREE.PointsMaterial({ size, map: dotTex, vertexColors: true, transparent: true, opacity, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, sizeAttenuation: true });
+    this.points = new THREE.Points(geo, mat);
+    this.points.frustumCulled = false;
+    for (let i = 0; i < n; i++) this.pos[i * 3 + 1] = -9999;
+  }
+  spawn(x, y, z, vx, vy, vz, life, r, g, b) {
+    const i = this.head; this.head = (this.head + 1) % this.n;
+    this.pos.set([x, y, z], i * 3);
+    this.vel.set([vx, vy, vz], i * 3);
+    this.life[i] = life; this.maxLife[i] = life;
+    this.col.set([r, g, b], i * 3);
+  }
+  update(dt) {
+    for (let i = 0; i < this.n; i++) {
+      if (this.life[i] <= 0) continue;
+      this.life[i] -= dt;
+      if (this.life[i] <= 0) { this.pos[i * 3 + 1] = -9999; continue; }
+      const d = Math.pow(this.drag, dt * 60);
+      this.vel[i * 3] *= d; this.vel[i * 3 + 2] *= d;
+      this.vel[i * 3 + 1] = this.vel[i * 3 + 1] * d + this.gravity * dt;
+      this.pos[i * 3] += this.vel[i * 3] * dt;
+      this.pos[i * 3 + 1] += this.vel[i * 3 + 1] * dt;
+      this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
+    }
+    this.points.geometry.attributes.position.needsUpdate = true;
+    this.points.geometry.attributes.color.needsUpdate = true;
+  }
+}
+const sparks = new ParticlePool(700, { size: 3.4, gravity: -14, drag: 0.985 });
+const smoke = new ParticlePool(500, { size: 9, additive: false, opacity: 0.34, gravity: 5, drag: 0.99 });
+scene.add(sparks.points, smoke.points);
+function explosionFx(p, scale = 1, fire = true) {
+  const n = Math.floor(26 * scale);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, b = Math.acos(rand(-1, 1)), s = rand(6, 42) * scale;
+    sparks.spawn(p.x, p.y, p.z, Math.sin(b) * Math.cos(a) * s, Math.cos(b) * s, Math.sin(b) * Math.sin(a) * s,
+      rand(0.35, 0.9), 1, rand(0.35, 0.75), 0.15);
+  }
+  for (let i = 0; i < 10 * scale; i++)
+    smoke.spawn(p.x + rand(-3, 3), p.y + rand(-3, 3), p.z + rand(-3, 3), rand(-4, 4), rand(3, 10), rand(-4, 4), rand(0.8, 1.8), 0.12, 0.12, 0.12);
+  if (fire) SoundFX.explosion();
+}
+// Wingtip contrails while boosting + a cheap "speed line" feel via FOV.
+function trailFx(p, dir) {
+  smoke.spawn(p.x, p.y, p.z, -dir.x * 4, -dir.y * 4, -dir.z * 4, 0.5, 0.75, 0.85, 0.95);
+}
+
+// ================================================================
+// 5. ENVIRONMENT BUILDERS — one distinct world per mission.
+// ================================================================
+const hemi = new THREE.HemisphereLight(0xbfe3ff, 0x33402a, 0.9);
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+scene.add(hemi, sun);
+
+function canvasTexture(draw, w = 128, h = 128) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const cloudTex = canvasTexture((ctx, w, h) => {
+  const g = ctx.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2);
+  g.addColorStop(0, 'rgba(255,255,255,.85)'); g.addColorStop(0.6, 'rgba(255,255,255,.38)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+}, 256, 256);
+function addClouds(group, n, yBase, spread, tint = 0xffffff, scale = [180, 420]) {
+  const mat = new THREE.SpriteMaterial({ map: cloudTex, color: tint, transparent: true, opacity: 0.75, depthWrite: false });
+  for (let i = 0; i < n; i++) {
+    const s = new THREE.Sprite(mat);
+    s.position.set(rand(-spread, spread), yBase + rand(-40, 90), rand(-spread, spread));
+    const sc = rand(scale[0], scale[1]); s.scale.set(sc, sc * 0.42, 1);
+    group.add(s);
+  }
+}
+function groundPlane(color, size = 10000) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0 }));
+  m.rotation.x = -Math.PI / 2; m.position.y = -0.2;
+  return m;
+}
+function box(w, h, d, color, x, y, z, opts = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: opts.rough ?? 0.9, metalness: opts.metal ?? 0.05, emissive: opts.emissive ?? 0x000000, emissiveIntensity: opts.ei ?? 1 }));
+  m.position.set(x, y, z); if (opts.ry) m.rotation.y = opts.ry;
+  return m;
+}
+function fireGlow(x, y, z, s = 1) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: 0xff7a26, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(3.2 * s, 9 * s, 7), mat);
+  cone.position.y = 4 * s; g.add(cone);
+  const core = new THREE.Mesh(new THREE.SphereGeometry(2.4 * s, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffc46b }));
+  core.position.y = 1; g.add(core);
+  g.position.set(x, y, z);
+  g.userData.fire = true;
+  return g;
+}
+
+const ENV = { group: null, colliders: [], update: null, groundY: () => 0 };
+function clearEnvironment() {
+  if (ENV.group) { scene.remove(ENV.group); ENV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  ENV.group = new THREE.Group(); ENV.colliders = []; ENV.update = null; ENV.groundY = () => 0;
+  scene.add(ENV.group);
+}
+
+function envAirbase(g) { // M1 — dawn, burning base
+  g.add(groundPlane(0x4a4a3c));
+  const runway = box(46, 0.3, 1500, 0x2c2e33, 0, 0.1, 0); g.add(runway);
+  for (let z = -700; z <= 700; z += 90) g.add(box(2.2, 0.35, 26, 0xf5f5f5, 0, 0.15, z));
+  for (const sx of [-260, 240]) for (let i = 0; i < 4; i++) {
+    const hx = sx + rand(-30, 30), hz = -420 + i * 260 + rand(-40, 40);
+    g.add(box(70, 16, 46, 0x5a5148, hx, 8, hz));
+    g.add(box(76, 3, 52, 0x3c362f, hx, 17.5, hz));
+    ENV.colliders.push({ x: hx, z: hz, r: 46, h: 19 });
+  }
+  const tower = box(10, 42, 10, 0x6b6259, 120, 21, -120); g.add(tower);
+  g.add(box(16, 6, 16, 0x384048, 120, 45, -120, { emissive: 0xffa63a, ei: 0.7 }));
+  ENV.colliders.push({ x: 120, z: -120, r: 12, h: 48 });
+  const fires = [];
+  for (let i = 0; i < 9; i++) { const f = fireGlow(rand(-320, 320), 0, rand(-700, 700), rand(0.8, 1.7)); g.add(f); fires.push(f); }
+  addClouds(g, 16, 620, 3600, 0xffd9b0);
+  return (dt, t) => { for (const f of fires) { f.children[0].scale.setScalar(1 + Math.sin(t * 9 + f.position.x) * 0.16); if (Math.random() < 0.25) smoke.spawn(f.position.x, 10, f.position.z, rand(-1, 1), rand(7, 12), rand(-1, 1), rand(1, 2), 0.1, 0.1, 0.1); } };
+}
+function envValley(g) { // M2 — green valley, river, convoy road
+  g.add(groundPlane(0x3f7031));
+  const river = box(210, 0.25, 10000, 0x2e6da8, -620, 0.05, 0, { rough: 0.25, metal: 0.3 }); g.add(river);
+  const road = box(30, 0.3, 9000, 0x555049, 260, 0.08, 0); g.add(road);
+  const hillMat = new THREE.MeshStandardMaterial({ color: 0x356b2a, roughness: 1 });
+  for (let i = 0; i < 26; i++) {
+    const hx = rand(-2600, 2600), hz = rand(-3200, 3200);
+    if (Math.abs(hx - 260) < 160 || Math.abs(hx + 620) < 240) continue;
+    const h = rand(60, 190), r = rand(140, 320);
+    const hill = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), hillMat);
+    hill.position.set(hx, h / 2 - 4, hz); g.add(hill);
+    ENV.colliders.push({ x: hx, z: hz, r: r * 0.8, h });
+  }
+  const trunk = new THREE.CylinderGeometry(1.1, 1.4, 7, 5), leaf = new THREE.ConeGeometry(5.5, 13, 6);
+  const trees = new THREE.InstancedMesh(leaf, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), 240);
+  const trunks = new THREE.InstancedMesh(trunk, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), 240);
+  const M4 = new THREE.Matrix4();
+  for (let i = 0; i < 240; i++) {
+    const x = rand(-2800, 2800), z = rand(-3400, 3400);
+    if (Math.abs(x - 260) < 60 || Math.abs(x + 620) < 150) { M4.makeScale(0, 0, 0); }
+    else M4.makeTranslation(x, 12, z);
+    trees.setMatrixAt(i, M4);
+    M4.makeTranslation(x, 3.5, z); trunks.setMatrixAt(i, M4);
+  }
+  g.add(trees, trunks);
+  addClouds(g, 20, 560, 3800);
+  return null;
+}
+function envFrozen(g) { // M3 — night, snow peaks, searchlights
+  g.add(groundPlane(0xaebdc9));
+  const peakMat = new THREE.MeshStandardMaterial({ color: 0x8fa5b8, roughness: 0.95 });
+  const capMat = new THREE.MeshStandardMaterial({ color: 0xe8f2fa, roughness: 0.85 });
+  for (let i = 0; i < 22; i++) {
+    const hx = rand(-3000, 3000), hz = rand(-3400, 3400);
+    if (Math.hypot(hx, hz) < 500) continue;
+    const h = rand(220, 460), r = rand(240, 430);
+    const peak = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), peakMat);
+    peak.position.set(hx, h / 2 - 4, hz); g.add(peak);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.42, h * 0.42, 6), capMat);
+    cap.position.set(hx, h - h * 0.21 - 4, hz); g.add(cap);
+    ENV.colliders.push({ x: hx, z: hz, r: r * 0.75, h });
+  }
+  // Falling snow
+  const snowGeo = new THREE.BufferGeometry();
+  const sp = new Float32Array(900 * 3);
+  for (let i = 0; i < 900; i++) sp.set([rand(-1600, 1600), rand(0, 700), rand(-1600, 1600)], i * 3);
+  snowGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 2.2, transparent: true, opacity: 0.8, depthWrite: false }));
+  snow.frustumCulled = false; g.add(snow);
+  // Searchlights: sweeping additive cones (bases are added as targets later)
+  const beams = [];
+  for (let i = 0; i < 5; i++) {
+    const bx = rand(-1400, 1400), bz = rand(-1600, 1600);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(60, 700, 12, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.10, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    cone.position.set(bx, 330, bz); g.add(cone);
+    beams.push({ cone, bx, bz, ph: rand(0, 6.28) });
+  }
+  addClouds(g, 10, 700, 3400, 0x8fa8c8);
+  return (dt, t, pp) => {
+    const arr = snow.geometry.attributes.position.array;
+    for (let i = 0; i < 900; i++) {
+      arr[i * 3 + 1] -= dt * 26; arr[i * 3] += Math.sin(t + i) * dt * 6;
+      if (arr[i * 3 + 1] < 0) arr[i * 3 + 1] = 700;
+    }
+    snow.geometry.attributes.position.needsUpdate = true;
+    if (pp) { snow.position.set(pp.x * 0.92, 0, pp.z * 0.92); }
+    for (const b of beams) {
+      b.cone.position.x = b.bx + Math.sin(t * 0.35 + b.ph) * 260;
+      b.cone.position.z = b.bz + Math.cos(t * 0.28 + b.ph) * 260;
+      b.cone.rotation.z = Math.sin(t * 0.35 + b.ph) * 0.5;
+      b.cone.rotation.x = Math.cos(t * 0.3 + b.ph) * 0.5;
+    }
+  };
+}
+function envCity(g) { // M4 — blackout capital, fires and smoke
+  g.add(groundPlane(0x1c1e24));
+  const winTex = canvasTexture((ctx, w, h) => {
+    ctx.fillStyle = '#23262e'; ctx.fillRect(0, 0, w, h);
+    for (let y = 6; y < h - 4; y += 10) for (let x = 5; x < w - 4; x += 9) {
+      const lit = Math.random() < 0.24;
+      ctx.fillStyle = lit ? (Math.random() < 0.7 ? '#ffd98a' : '#9fd8ff') : '#14161b';
+      ctx.fillRect(x, y, 5, 6);
+    }
+  }, 96, 160);
+  const cityMat = new THREE.MeshStandardMaterial({ map: winTex, roughness: 0.85 });
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const blocks = [];
+  for (let gx = -5; gx <= 5; gx++) for (let gz = -6; gz <= 6; gz++) {
+    if ((gx + gz) % 3 === 0 && Math.random() < 0.5) continue;              // streets
+    const x = gx * 300 + rand(-36, 36), z = gz * 300 + rand(-36, 36);
+    if (Math.hypot(x, z) < 260) continue;                                   // plaza at centre
+    const w = rand(52, 92), d = rand(52, 92), h = rand(70, 300);
+    blocks.push({ x, z, w, d, h });
+  }
+  const inst = new THREE.InstancedMesh(geo, cityMat, blocks.length);
+  const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), Pv = new THREE.Vector3();
+  blocks.forEach((b, i) => {
+    S.set(b.w, b.h, b.d); Pv.set(b.x, b.h / 2, b.z);
+    M4.compose(Pv, Q, S); inst.setMatrixAt(i, M4);
+    ENV.colliders.push({ x: b.x, z: b.z, r: Math.max(b.w, b.d) * 0.62, h: b.h });
+  });
+  g.add(inst);
+  const fires = [];
+  for (let i = 0; i < 12; i++) { const f = fireGlow(rand(-1500, 1500), 0, rand(-1700, 1700), rand(1, 2.4)); g.add(f); fires.push(f); }
+  addClouds(g, 12, 640, 3400, 0x5a6270);
+  return (dt, t) => { for (const f of fires) { f.children[0].scale.setScalar(1 + Math.sin(t * 8 + f.position.z) * 0.2); if (Math.random() < 0.3) smoke.spawn(f.position.x, 14, f.position.z, rand(-1.5, 1.5), rand(8, 14), rand(-1.5, 1.5), rand(1.2, 2.4), 0.07, 0.07, 0.08); } };
+}
+function envSea(g) { // M5 — animated ocean
+  const geo = new THREE.PlaneGeometry(11000, 11000, 56, 56);
+  geo.rotateX(-Math.PI / 2);
+  const sea = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x14507c, roughness: 0.32, metalness: 0.25 }));
+  sea.position.y = 0; g.add(sea);
+  const base = geo.attributes.position.array.slice();
+  addClouds(g, 18, 520, 4000);
+  return (dt, t) => {
+    const arr = geo.attributes.position.array;
+    for (let i = 0; i < arr.length; i += 3) {
+      const x = base[i], z = base[i + 2];
+      arr[i + 1] = Math.sin(x * 0.012 + t * 1.15) * 2.6 + Math.cos(z * 0.009 + t * 0.8) * 2.2;
+    }
+    geo.attributes.position.needsUpdate = true;
+  };
+}
+function envStorm(g) { // M6 — high-altitude storm above a cloud sea
+  const geo = new THREE.PlaneGeometry(11000, 11000, 40, 40);
+  geo.rotateX(-Math.PI / 2);
+  const arr = geo.attributes.position.array;
+  for (let i = 0; i < arr.length; i += 3) arr[i + 1] = rand(-26, 26);
+  geo.computeVertexNormals();
+  const deck = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x707c8c, roughness: 1 }));
+  deck.position.y = -320; g.add(deck);
+  ENV.groundY = () => -320;
+  addClouds(g, 42, 60, 3600, 0x39424e, [260, 560]);
+  addClouds(g, 20, 420, 3600, 0x59636f, [200, 420]);
+  let flash = 0;
+  return (dt, t) => {
+    flash -= dt;
+    if (Math.random() < dt * 0.55) { flash = 0.12; SoundFX && audioCtx.state === 'running' && noiseBurst(0.7, 220, 60, 0.1); }
+    hemi.intensity = flash > 0 ? 2.4 : 0.55 + Math.sin(t * 0.7) * 0.06;
+  };
+}
+const ENV_BUILDERS = [envAirbase, envValley, envFrozen, envCity, envSea, envStorm];
+const SKIES = [
+  { bg: 0x3a4a63, fog: [0xcf8a52, 900, 6500], hemi: 0.85, sun: 0xffb37a, sunI: 1.5, sunPos: [900, 420, -1600] },   // dawn
+  { bg: 0x87bfe8, fog: [0xa8cdea, 1200, 8000], hemi: 1.0, sun: 0xfff2d8, sunI: 1.7, sunPos: [1200, 1600, -800] }, // day valley
+  { bg: 0x0a1420, fog: [0x0d1a29, 500, 4200], hemi: 0.5, sun: 0xbfd9ff, sunI: 0.55, sunPos: [-600, 900, -400] },  // night snow
+  { bg: 0x0c0e14, fog: [0x11131c, 600, 5200], hemi: 0.42, sun: 0x8fa3c8, sunI: 0.4, sunPos: [400, 700, 600] },    // blackout city
+  { bg: 0x7fb2d9, fog: [0x9cc3e2, 1300, 8500], hemi: 0.95, sun: 0xfff2d8, sunI: 1.65, sunPos: [-1000, 1300, -900] }, // sea day
+  { bg: 0x232a33, fog: [0x2b333d, 700, 6000], hemi: 0.55, sun: 0xaFC4de, sunI: 0.7, sunPos: [600, 1000, -600] },  // storm
+];
+function applySky(i) {
+  const s = SKIES[i];
+  scene.background = new THREE.Color(s.bg);
+  scene.fog = new THREE.Fog(s.fog[0], s.fog[1], s.fog[2]);
+  hemi.intensity = s.hemi;
+  sun.color.set(s.sun); sun.intensity = s.sunI;
+  sun.position.set(...s.sunPos);
+}
+
+// ================================================================
+// 6. ENTITIES — player, enemies, wingman, weapons, targets.
+// ================================================================
+const player = {
+  group: buildPlayerJet(), speed: 0, hp: 100, maxHp: 100, boost: 1,
+  missiles: 6, rollT: 0, rollDir: 1, invuln: 0, alive: true, fireCd: 0, hurtCd: 0,
+};
+const wingman = { group: buildWingmanJet(), active: false, level: 0, fireCd: 0, hp: 260 };
+const enemies = [];
+const targets = [];   // bases, ships, boss, convoy trucks (friendly flag)
+const bullets = [];
+const missiles = [];
+let missionKills = 0;
+
+const bulletGeo = new THREE.BoxGeometry(0.5, 0.5, 7);
+const bulletMatP = new THREE.MeshBasicMaterial({ color: 0x51ff7a });
+const bulletMatE = new THREE.MeshBasicMaterial({ color: 0xff5a3a });
+function fireBullet(pos, dir, speed, dmg, hostile) {
+  const m = new THREE.Mesh(bulletGeo, hostile ? bulletMatE : bulletMatP);
+  m.position.copy(pos);
+  m.lookAt(_v1.copy(pos).add(dir));
+  scene.add(m);
+  bullets.push({ mesh: m, vel: dir.clone().multiplyScalar(speed), life: 1.7, dmg, hostile });
+}
+function spawnMissile(owner, target, dmg) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 3.6, 7), new THREE.MeshStandardMaterial({ color: 0xd8dee6, roughness: 0.4, metalness: 0.5 }));
+  body.rotation.x = Math.PI / 2; g.add(body);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1, 7), new THREE.MeshBasicMaterial({ color: 0xff5252 }));
+  tip.rotation.x = -Math.PI / 2; tip.position.z = -2.3; g.add(tip);
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.5, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffa63a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  glow.position.z = 2; g.add(glow);
+  g.position.copy(owner.group.position);
+  g.quaternion.copy(owner.group.quaternion);
+  scene.add(g);
+  missiles.push({ group: g, target, speed: 120, life: 8, dmg, smokeT: 0, hostile: !!owner.hostile });
+  SoundFX.missile();
+}
+
+// ---------------- enemy fighters ----------------
+function spawnEnemy(x, y, z, ace = false) {
+  const group = buildEnemyJet();
+  group.position.set(x, y, z);
+  scene.add(group);
+  const e = {
+    group, ace, alive: true, radius: 10,
+    hp: ace ? 90 : 45, maxHp: ace ? 90 : 45,
+    speed: rand(118, 132) * (ace ? 1.14 : 1),
+    fireCd: rand(0.8, 2.2), burst: 0, jinkT: 0, jink: new THREE.Vector3(),
+    patrol: new THREE.Vector3(rand(-2400, 2400), rand(280, 520), rand(-2400, 2400)),
+    targetTruck: null, scoreValue: ace ? 300 : 150, credits: ace ? 45 : 22,
+  };
+  _m4.lookAt(_zero, _v1.set(-x, 0, -z).normalize(), THREE.Object3D.DEFAULT_UP);
+  group.quaternion.setFromRotationMatrix(_m4);
+  enemies.push(e);
+  return e;
+}
+const _m4 = new THREE.Matrix4(), _zero = new THREE.Vector3();
+function steerToward(e, dest, dt, turnRate) {
+  _v1.copy(dest).sub(e.group.position);
+  const dist = _v1.length(); _v1.normalize();
+  _m4.lookAt(_zero, _v1, THREE.Object3D.DEFAULT_UP);
+  _q1.setFromRotationMatrix(_m4);
+  const prev = e.group.quaternion.clone();
+  e.group.quaternion.slerp(_q1, Math.min(1, turnRate * dt));
+  // bank into the turn
+  const turn = prev.angleTo(e.group.quaternion);
+  e.group.rotateZ(clamp(turn * 14, -0.9, 0.9) * (Math.random() < 0.5 ? 1 : 1));
+  return dist;
+}
+function enemyForward(e) { return _v2.set(0, 0, -1).applyQuaternion(e.group.quaternion); }
+function updateEnemies(dt) {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const e = enemies[i];
+    if (!e.alive) continue;
+    const pos = e.group.position;
+    // Choose a victim: convoy attackers split between trucks and player.
+    let dest, victim = null;
+    const truckTarget = (MISSION.convoy && e.targetTruck && e.targetTruck.alive) ? e.targetTruck : null;
+    if (truckTarget) { dest = truckTarget.group.position; victim = truckTarget; }
+    else {
+      if (MISSION.convoy && Math.random() < dt * 0.25) {
+        const trucks = targets.filter(t => t.kind === 'truck' && t.alive);
+        if (trucks.length && Math.random() < 0.55) e.targetTruck = trucks[Math.floor(Math.random() * trucks.length)];
+      }
+      dest = player.group.position; victim = player;
+    }
+    // Lead the victim a little
+    _v3.copy(dest);
+    if (victim === player) _v3.addScaledVector(_v1.set(0, 0, -1).applyQuaternion(player.group.quaternion), player.speed * 0.35);
+    if (e.jinkT > 0) { e.jinkT -= dt; _v3.add(e.jink); }
+    const dist = steerToward(e, _v3, dt, e.ace ? 1.35 : 1.05);
+    const wantSpeed = dist > 900 ? 178 : dist < 220 ? 104 : e.speed;
+    e.speed += (wantSpeed - e.speed) * Math.min(1, dt * 1.5);
+    pos.addScaledVector(enemyForward(e), e.speed * dt);
+    if (pos.y < 60) pos.y = 60;
+    if (pos.y > 900) pos.y = 900;
+    const rr = Math.hypot(pos.x, pos.z);
+    if (rr > WORLD_R + 500) { pos.multiplyScalar((WORLD_R + 400) / rr); }
+    // Flames
+    const fl = 0.7 + (e.speed / 178) * 0.9;
+    for (const f of e.group.userData.flames) f.scale.set(1, fl, 1);
+    // Fire control
+    e.fireCd -= dt;
+    const fwd = enemyForward(e).clone();
+    _v1.copy(victim === player ? player.group.position : dest).sub(pos).normalize();
+    const aim = fwd.dot(_v1);
+    if (e.fireCd <= 0 && dist < 780 && aim > 0.86) {
+      e.burst = 3; e.fireCd = rand(1.3, 2.6) * (e.ace ? 0.8 : 1);
+    }
+    if (e.burst > 0) {
+      e.burst -= dt * 9;
+      if (Math.random() < dt * 22) {
+        const dir = _v1.clone();
+        dir.x += rand(-0.045, 0.045); dir.y += rand(-0.045, 0.045); dir.z += rand(-0.045, 0.045); dir.normalize();
+        fireBullet(pos.clone().addScaledVector(fwd, 12), dir, 460, victim === player ? MISSION.enemyDmg : 9, true);
+        if (victim === player) SoundFX.enemyShoot();
+      }
+    }
+    if (Math.random() < dt * 0.4) smoke.spawn(pos.x, pos.y, pos.z, 0, 0, 0, 0.3, 0.5, 0.1, 0.1); // faint exhaust
+  }
+}
+function damageEnemy(e, dmg) {
+  e.hp -= dmg;
+  if (e.hp <= 0 && e.alive) {
+    e.alive = false;
+    explosionFx(e.group.position, e.ace ? 1.5 : 1.1);
+    scene.remove(e.group);
+    missionKills++;
+    if (MISSION) MISSION.fightersDown++;
+    addReward(e.scoreValue, e.credits, e.ace ? 'ACE DOWN' : 'SPLASHED');
+    checkMissionEnd();
+  } else if (e.hp < e.maxHp * 0.35 && Math.random() < 0.5) {
+    e.jinkT = 1.1; e.jink.set(rand(-260, 260), rand(-60, 90), rand(-260, 260));
+  }
+}
+
+// ---------------- ground / sea / boss targets ----------------
+function buildRadarBase(x, z) {
+  const g = new THREE.Group();
+  g.add(box(34, 7, 34, 0x4c565f, 0, 3.5, 0));
+  g.add(box(16, 12, 16, 0x5d6871, 0, 12, 0));
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(8.5, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xd7dee6, roughness: 0.5 }));
+  dome.position.y = 18; g.add(dome);
+  const dish = new THREE.Group();
+  const dm = new THREE.Mesh(new THREE.SphereGeometry(6, 10, 6, 0, Math.PI * 2, 0, Math.PI / 3), new THREE.MeshStandardMaterial({ color: 0xb9c4cf, roughness: 0.4, metalness: 0.4, side: THREE.DoubleSide }));
+  dm.rotation.x = Math.PI / 2.4; dish.add(dm); dish.position.set(11, 15, 0); g.add(dish);
+  const light = new THREE.Mesh(new THREE.SphereGeometry(0.9, 6, 6), new THREE.MeshBasicMaterial({ color: 0xff3b30 }));
+  light.position.y = 27.5; g.add(light);
+  g.position.set(x, 0, z);
+  scene.add(g);
+  const t = { group: g, kind: 'base', hp: 130, maxHp: 130, radius: 30, alive: true, dish, scoreValue: 300, credits: 60 };
+  targets.push(t);
+  return t;
+}
+function buildShip(x, z, ry, hostile) {
+  const g = new THREE.Group();
+  const hullC = hostile ? 0x3a3f46 : 0x51606e;
+  const hull = box(26, 9, 118, hullC, 0, 4, 0); g.add(hull);
+  const bow = new THREE.Mesh(new THREE.ConeGeometry(13, 34, 4), new THREE.MeshStandardMaterial({ color: hullC, roughness: 0.8 }));
+  bow.rotation.set(Math.PI / 2, Math.PI / 4, 0); bow.position.set(0, 4, -74); bow.scale.set(1, 1, 0.55); g.add(bow);
+  g.add(box(18, 14, 30, hostile ? 0x4a4038 : 0x5f7080, 0, 14, 12));
+  g.add(box(4, 20, 4, 0x2c3138, 0, 26, 8));
+  if (hostile) g.add(box(15, 2, 3, 0xa01622, 0, 22, 12));
+  const turrets = [];
+  for (const tz of [-38, 34]) {
+    const tur = new THREE.Group();
+    tur.add(box(7, 3.5, 7, 0x2c3138, 0, 1.7, 0));
+    const barrel = box(1.1, 1.1, 11, 0x1c2026, 0, 2.6, -6); tur.add(barrel);
+    tur.position.set(0, 9, tz); g.add(tur); turrets.push(tur);
+  }
+  g.position.set(x, 0, z); g.rotation.y = ry;
+  scene.add(g);
+  const t = { group: g, kind: 'ship', hp: 300, maxHp: 300, radius: 62, alive: true, hostile, turrets, fireCd: rand(1, 2), sinkT: 0, scoreValue: 500, credits: 120 };
+  targets.push(t);
+  return t;
+}
+function buildBoss() {
+  const g = new THREE.Group();
+  const M = new THREE.MeshStandardMaterial({ color: 0x23262c, roughness: 0.55, metalness: 0.5 });
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(46, 16, 190), M); g.add(hull);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(34, 10, 120), new THREE.MeshStandardMaterial({ color: 0x31363e, roughness: 0.6, metalness: 0.4 }));
+  deck.position.y = 12; g.add(deck);
+  g.add(box(20, 16, 26, 0x3d434d, 0, 24, -18));
+  g.add(box(3, 26, 3, 0x14171c, 0, 34, -18));
+  g.add(box(48, 3, 30, 0xa01622, 0, 9, 40));                                    // crimson stripe
+  const engines = [];
+  for (const ex of [-16, 16]) {
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(4.6, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff6a2a }));
+    glow.position.set(ex, -2, 96); g.add(glow); engines.push(glow);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(6.4, 1.1, 6, 14), M);
+    ring.position.set(ex, -2, 94); g.add(ring);
+  }
+  const turrets = [];
+  for (const [tx, tz] of [[-18, -60], [18, -60], [-18, 62], [18, 62]]) {
+    const tur = new THREE.Group();
+    tur.add(box(8, 4, 8, 0x1c2026, 0, 2, 0));
+    tur.add(box(1.3, 1.3, 13, 0x10131a, 0, 3, -7));
+    tur.position.set(tx, 8, tz); g.add(tur); turrets.push(tur);
+  }
+  g.position.set(0, 430, -1500);
+  scene.add(g);
+  const t = { group: g, kind: 'boss', hp: 850, maxHp: 850, radius: 105, alive: true, turrets, engines, fireCd: 1.5, angle: 0, scoreValue: 2000, credits: 400 };
+  targets.push(t);
+  return t;
+}
+function buildConvoy() {
+  const trucks = [];
+  for (let i = 0; i < 5; i++) {
+    const g = new THREE.Group();
+    g.add(box(7, 5, 11, 0x5c6e46, 0, 4.4, 3));
+    g.add(box(6.4, 4, 5, 0x47573a, 0, 3.9, -4.5));
+    g.add(box(7.4, 0.8, 16, 0x333a2c, 0, 1.6, 0));
+    const wheels = new THREE.Group();
+    for (const [wx, wz] of [[-3.6, -4.6], [3.6, -4.6], [-3.6, 4.6], [3.6, 4.6]]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.8, 8), new THREE.MeshStandardMaterial({ color: 0x14161a }));
+      w.rotation.z = Math.PI / 2; w.position.set(wx, 1.5, wz); wheels.add(w);
+    }
+    g.add(wheels);
+    g.position.set(260, 0, 2500 - i * 120);
+    scene.add(g);
+    const t = { group: g, kind: 'truck', hp: 70, maxHp: 70, radius: 12, alive: true, friendly: true, speed: 21 };
+    targets.push(t); trucks.push(t);
+  }
+  return trucks;
+}
+function damageTarget(t, dmg) {
+  if (!t.alive || t.friendly) return;
+  t.hp -= dmg;
+  if (t.hp <= 0) {
+    t.alive = false;
+    if (t.kind === 'boss') { explosionFx(t.group.position, 4, false); SoundFX.bigExplosion(); }
+    else explosionFx(t.group.position, t.kind === 'ship' ? 2.6 : 1.7);
+    if (t.kind !== 'ship' && t.kind !== 'boss') scene.remove(t.group);
+    missionKills++;
+    addReward(t.scoreValue, t.credits, t.kind === 'boss' ? 'CRUISER DESTROYED' : t.kind === 'ship' ? 'SHIP SUNK' : 'TARGET DESTROYED');
+    checkMissionEnd();
+  }
+}
+function updateTargets(dt, t) {
+  for (const tg of targets) {
+    if (tg.kind === 'base' && tg.alive) tg.dish.rotation.y += dt * 0.9;
+    if (tg.kind === 'truck' && tg.alive) {
+      tg.group.position.z -= tg.speed * dt;
+      if (Math.random() < dt * 2) smoke.spawn(tg.group.position.x, 8, tg.group.position.z + 6, 0, 3, 2, 0.7, 0.2, 0.2, 0.2);
+    }
+    if (tg.kind === 'ship') {
+      if (!tg.alive) { // sinking
+        tg.sinkT += dt;
+        tg.group.position.y = -tg.sinkT * 3.2;
+        tg.group.rotation.z = Math.min(0.5, tg.sinkT * 0.14);
+        if (tg.sinkT > 4 && tg.group.position.y > -999) { tg.group.position.y = -1000; }
+        continue;
+      }
+      if (tg.hostile) {
+        for (const tur of tg.turrets) { _v1.copy(player.group.position).sub(tur.getWorldPosition(_v2)); tur.rotation.y = Math.atan2(_v1.x, _v1.z) + Math.PI - tg.group.rotation.y; }
+        tg.fireCd -= dt;
+        const d = tg.group.position.distanceTo(player.group.position);
+        if (tg.fireCd <= 0 && d < 850) {
+          tg.fireCd = rand(0.9, 1.6);
+          for (const tur of tg.turrets) {
+            const wp = tur.getWorldPosition(new THREE.Vector3());
+            _v1.copy(player.group.position).sub(wp).normalize();
+            _v1.x += rand(-0.06, 0.06); _v1.y += rand(-0.02, 0.08); _v1.z += rand(-0.06, 0.06); _v1.normalize();
+            fireBullet(wp, _v1.clone(), 430, MISSION.enemyDmg * 0.8, true);
+          }
+          SoundFX.enemyShoot();
+        }
+      }
+    }
+    if (tg.kind === 'boss' && tg.alive) {
+      tg.angle += dt * 0.045;
+      tg.group.position.x = Math.sin(tg.angle) * 700;
+      tg.group.position.z = -1500 + Math.cos(tg.angle) * 420;
+      tg.group.rotation.y = -tg.angle;
+      tg.group.position.y = 430 + Math.sin(t * 0.5) * 12;
+      for (const e of tg.engines) e.scale.setScalar(1 + Math.sin(t * 7) * 0.15);
+      for (const tur of tg.turrets) { _v1.copy(player.group.position).sub(tur.getWorldPosition(_v2)); tur.rotation.y = Math.atan2(_v1.x, _v1.z) + Math.PI - tg.group.rotation.y; }
+      tg.fireCd -= dt;
+      const d = tg.group.position.distanceTo(player.group.position);
+      if (tg.fireCd <= 0 && d < 1050) {
+        tg.fireCd = 0.85;
+        for (const tur of tg.turrets) {
+          const wp = tur.getWorldPosition(new THREE.Vector3());
+          _v1.copy(player.group.position).sub(wp).normalize();
+          _v1.x += rand(-0.05, 0.05); _v1.y += rand(-0.03, 0.05); _v1.z += rand(-0.05, 0.05); _v1.normalize();
+          fireBullet(wp, _v1.clone(), 470, MISSION.enemyDmg, true);
+        }
+        SoundFX.enemyShoot();
+      }
+    }
+  }
+}
+
+// ---------------- bullets & missiles ----------------
+function updateBullets(dt) {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.life -= dt;
+    b.mesh.position.addScaledVector(b.vel, dt);
+    const p = b.mesh.position;
+    let dead = b.life <= 0 || p.y < ENV.groundY() - 4;
+    if (!dead && b.hostile) {
+      if (p.distanceToSquared(player.group.position) < 110) { damagePlayer(b.dmg); dead = true; }
+      else for (const tg of targets) {
+        if (tg.kind === 'truck' && tg.alive && p.distanceToSquared(tg.group.position) < 150) {
+          tg.hp -= b.dmg;
+          if (tg.hp <= 0) { tg.alive = false; explosionFx(tg.group.position, 1.4); showBanner('CONVOY UNIT LOST', 'PROTECT THE REMAINING TRUCKS'); checkMissionEnd(); }
+          dead = true; break;
+        }
+      }
+    }
+    if (!dead && !b.hostile) {
+      for (const e of enemies) {
+        if (e.alive && p.distanceToSquared(e.group.position) < e.radius * e.radius + 40) { damageEnemy(e, b.dmg); hitmark(); dead = true; break; }
+      }
+      if (!dead) for (const tg of targets) {
+        if (!tg.friendly && tg.alive && p.distanceToSquared(tg.group.position) < tg.radius * tg.radius) { damageTarget(tg, b.dmg); hitmark(); dead = true; break; }
+      }
+      if (!dead && wingman.active && false) {}
+    }
+    if (dead) { scene.remove(b.mesh); bullets.splice(i, 1); }
+  }
+}
+function updateMissiles(dt) {
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    const m = missiles[i];
+    m.life -= dt;
+    m.speed = Math.min(560, m.speed + dt * 320);
+    const pos = m.group.position;
+    const tgt = m.target;
+    if (tgt && tgt.alive !== false && (tgt.group)) {
+      _v1.copy(tgt.group.position).sub(pos).normalize();
+      _m4.lookAt(_zero, _v1, THREE.Object3D.DEFAULT_UP);
+      _q1.setFromRotationMatrix(_m4);
+      m.group.quaternion.slerp(_q1, Math.min(1, 3.1 * dt));
+    }
+    _v1.set(0, 0, -1).applyQuaternion(m.group.quaternion);
+    pos.addScaledVector(_v1, m.speed * dt);
+    m.smokeT -= dt;
+    if (m.smokeT <= 0) { m.smokeT = 0.028; smoke.spawn(pos.x, pos.y, pos.z, rand(-2, 2), rand(-2, 2), rand(-2, 2), rand(0.4, 0.8), 0.8, 0.82, 0.85); }
+    let boom = m.life <= 0 || pos.y < ENV.groundY();
+    if (!boom && tgt && tgt.group) {
+      const rr = tgt.radius ? tgt.radius + 14 : 24;
+      if (pos.distanceToSquared(tgt.group.position) < rr * rr) boom = true;
+    }
+    if (boom) {
+      explosionFx(pos, 1.5);
+      if (tgt && tgt.alive) {
+        if (tgt.maxHp && tgt.kind === undefined) damageEnemy(tgt, m.dmg);
+        else if (tgt.kind) damageTarget(tgt, m.dmg);
+      }
+      // splash
+      for (const e of enemies) if (e.alive && e !== tgt && pos.distanceToSquared(e.group.position) < 1600) damageEnemy(e, m.dmg * 0.5);
+      scene.remove(m.group); missiles.splice(i, 1);
+    }
+  }
+}
+
+// ---------------- wingman ----------------
+function updateWingman(dt) {
+  if (!wingman.active) return;
+  const g = wingman.group;
+  _v1.set(-30, 5, 34).applyQuaternion(player.group.quaternion).add(player.group.position);
+  g.position.lerp(_v1, Math.min(1, dt * 2.6));
+  _m4.lookAt(_zero, _v2.set(0, 0, -1).applyQuaternion(player.group.quaternion), THREE.Object3D.DEFAULT_UP);
+  _q1.setFromRotationMatrix(_m4);
+  g.quaternion.slerp(_q1, Math.min(1, dt * 3));
+  for (const f of g.userData.flames) f.scale.set(1, 1.1, 1);
+  wingman.fireCd -= dt;
+  let best = null, bd = 850;
+  for (const e of enemies) { if (!e.alive) continue; const d = g.position.distanceTo(e.group.position); if (d < bd) { bd = d; best = e; } }
+  if (best && wingman.fireCd <= 0) {
+    wingman.fireCd = wingman.level >= 2 ? 0.15 : 0.22;
+    _v1.copy(best.group.position).sub(g.position).normalize();
+    fireBullet(g.position.clone(), _v1.clone(), 520, wingman.level >= 2 ? 9 : 6, false);
+  }
+}
+
+// ================================================================
+// 7. GAME STATE, MISSIONS, PROGRESSION
+// ================================================================
+const RANKS = [[0, 'ROOKIE'], [800, 'WINGMAN'], [2000, 'FIGHTER PILOT'], [4200, 'SQUADRON LEADER'], [7500, 'ACE'], [11500, 'PHANTOM LEGEND']];
+const rankName = s => { let r = RANKS[0][1]; for (const [t, n] of RANKS) if (s >= t) r = n; return r; };
+const SAVE = { score: 0, credits: 0, mission: 0, kills: 0, unlocked: 0, upgrades: { weapon: 0, engine: 0, armor: 0, wingman: 0 } };
+const UPGRADE_DEFS = [
+  { key: 'weapon', name: 'WEAPONS', desc: 'Cannon damage & fire rate up. Missiles hit harder, +1 missile per mission per level.', costs: [120, 240, 420] },
+  { key: 'engine', name: 'ENGINE SPEED', desc: 'Higher cruise and afterburner speed, faster boost recharge.', costs: [120, 240, 420] },
+  { key: 'armor', name: 'ARMOR / SHIELDS', desc: '+35 max hull integrity per level and a reinforced frame.', costs: [120, 240, 420] },
+  { key: 'wingman', name: 'AI WINGMAN', desc: 'Call in a Squadron 07 wingman who flies your wing and engages targets. Lv2: heavier guns.', costs: [260, 520] },
+];
+let state = 'menu';
+let MISSION = null;
+let camMode = 'chase';
+let shakeAmp = 0;
+let elapsed = 0;
+
+const MISSIONS = [
+  {
+    name: 'MISSION 01 — FIRST CONTACT', loc: 'ASTERIA CENTRAL AIRBASE', time: 'DAWN · 05:47', enemyDmg: 7,
+    obj: 'Varkovia\'s first wave is hitting our burning airbase. Scramble, Phantom — splash every hostile fighter.',
+    targets: '7 × Varkovia fighters',
+    setup() {
+      spawnWave(3, false, 1500);
+      MISSION.spawnQueue.push({ at: 22, n: 4, ace: false });
+      MISSION.totalFighters = 7;
+    },
+    objText: () => `Hostiles down: ${MISSION.fightersDown} / ${MISSION.totalFighters}`,
+    winWhen: () => MISSION.spawned >= MISSION.totalFighters && aliveEnemies() === 0,
+  },
+  {
+    name: 'MISSION 02 — BROKEN FRONTIER', loc: 'VERDANT VALLEY · BORDERLANDS', time: 'MORNING · 09:12', enemyDmg: 7, convoy: true,
+    obj: 'An allied supply convoy is rolling through the valley under air attack. Keep the trucks alive and clear the skies.',
+    targets: '10 × fighters · protect 5 trucks',
+    setup() {
+      MISSION.trucks = buildConvoy();
+      spawnWave(4, false, 1600);
+      MISSION.spawnQueue.push({ at: 24, n: 3, ace: false }, { at: 50, n: 3, ace: false });
+      MISSION.totalFighters = 10;
+    },
+    objText: () => `Convoy trucks: ${MISSION.trucks.filter(t => t.alive).length} / 5 · Hostiles down: ${MISSION.fightersDown} / ${MISSION.totalFighters}`,
+    winWhen: () => (MISSION.spawned >= MISSION.totalFighters && aliveEnemies() === 0) ? 'win' : (MISSION.trucks.every(t => !t.alive) ? 'fail' : null),
+  },
+  {
+    name: 'MISSION 03 — FROZEN HORIZON', loc: 'KHAROV MOUNTAINS · NORTH', time: 'NIGHT · 01:30', enemyDmg: 8,
+    obj: 'Under cover of night and snow, Varkovia\'s radar and air-defense bases guide their bombers. Knock out all four radar bases.',
+    targets: '4 × radar bases (+ patrols)',
+    setup() {
+      for (const [x, z] of [[-820, -1050], [900, -820], [-1050, 880], [780, 1100]]) buildRadarBase(x, z);
+      spawnWave(4, false, 1900);
+      MISSION.totalFighters = 4;
+    },
+    objText: () => `Radar bases destroyed: ${targets.filter(t => t.kind === 'base' && !t.alive).length} / 4`,
+    winWhen: () => targets.filter(t => t.kind === 'base').every(t => !t.alive),
+  },
+  {
+    name: 'MISSION 04 — BURNING CITY', loc: 'ASTERIA CAPITAL · MERIDIAN CITY', time: 'BLACKOUT · 22:05', enemyDmg: 8,
+    obj: 'The capital is dark and burning. Weave between the towers and drive Varkovia\'s fighters out of our streets.',
+    targets: '10 × fighters over the capital',
+    setup() {
+      spawnWave(5, false, 1400);
+      MISSION.spawnQueue.push({ at: 26, n: 5, ace: false });
+      MISSION.totalFighters = 10;
+    },
+    objText: () => `Hostiles down: ${MISSION.fightersDown} / ${MISSION.totalFighters}`,
+    winWhen: () => MISSION.spawned >= MISSION.totalFighters && aliveEnemies() === 0,
+  },
+  {
+    name: 'MISSION 05 — BLACK SEA OFFENSIVE', loc: 'ASTERIA COAST · BLACK SEA', time: 'MIDDAY · 12:40', enemyDmg: 8,
+    obj: 'Varkovia\'s destroyer squadron is shelling our coast. Sink all three enemy warships — watch their flak.',
+    targets: '3 × enemy destroyers + 6 fighters',
+    setup() {
+      buildShip(-650, -900, 0.4, true); buildShip(500, -1500, -0.3, true); buildShip(100, 800, 2.8, true);
+      const a1 = buildShip(-1400, 500, 1.2, false); a1.friendly = true;
+      const a2 = buildShip(1500, -400, -1.1, false); a2.friendly = true;
+      spawnWave(6, false, 1800);
+      MISSION.totalFighters = 6;
+    },
+    objText: () => `Enemy ships sunk: ${targets.filter(t => t.kind === 'ship' && t.hostile && !t.alive).length} / 3`,
+    winWhen: () => targets.filter(t => t.kind === 'ship' && t.hostile).every(t => !t.alive),
+  },
+  {
+    name: 'MISSION 06 — IRON SKIES', loc: 'HIGH ALTITUDE · STORM FRONT', time: 'STORM · 17:55', enemyDmg: 10,
+    obj: 'The aerial command cruiser SKYHAMMER and Varkovia\'s elite ace squadron. End this war, Phantom — bring down the cruiser.',
+    targets: '1 × SKYHAMMER cruiser + 4 aces',
+    setup() {
+      MISSION.boss = buildBoss();
+      spawnWave(2, true, 1700);
+      MISSION.spawnQueue.push({ at: 30, n: 2, ace: true });
+      MISSION.totalFighters = 4;
+    },
+    objText: () => MISSION.boss && MISSION.boss.alive ? `SKYHAMMER hull: ${Math.max(0, Math.ceil(MISSION.boss.hp / MISSION.boss.maxHp * 100))}%` : 'SKYHAMMER DESTROYED',
+    winWhen: () => MISSION.boss && !MISSION.boss.alive,
+  },
+];
+function aliveEnemies() { return enemies.filter(e => e.alive).length; }
+function spawnWave(n, ace, dist) {
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rand(-0.4, 0.4);
+    spawnEnemy(Math.cos(a) * dist * rand(0.7, 1), rand(280, 520), Math.sin(a) * dist * rand(0.7, 1), ace);
+    MISSION.spawned++;
+  }
+}
+
+// ---------------- rewards / damage ----------------
+const el = id => document.getElementById(id);
+function addReward(score, credits, label) {
+  SAVE.score += score; SAVE.credits += credits; SAVE.kills++;
+  showBanner(label, `+${score} PTS · +${credits} CR`, 1300);
+  updateHudTop();
+}
+function damagePlayer(dmg) {
+  if (!player.alive || state !== 'flying') return;
+  if (player.invuln > 0 || player.rollT > 0) return;      // barrel roll dodges
+  player.hp -= dmg;
+  shakeAmp = Math.min(1.4, shakeAmp + 0.45);
+  if (player.hurtCd <= 0) { SoundFX.hurt(); player.hurtCd = 0.25; }
+  if (player.hp <= 0) {
+    player.hp = 0; player.alive = false;
+    explosionFx(player.group.position, 3); SoundFX.bigExplosion();
+    player.group.visible = false;
+    setTimeout(() => endMission(false), 1400);
+  }
+}
+function hitmark() {
+  const h = el('hitmarker');
+  h.style.opacity = 1; h.style.transform = 'translate(-50%,-50%) scale(1.25)';
+  setTimeout(() => { h.style.opacity = 0; h.style.transform = 'translate(-50%,-50%) scale(1)'; }, 70);
+  SoundFX.hit();
+}
+let bannerTimer = null;
+function showBanner(main, sub, dur = 2200) {
+  el('banner-main').textContent = main;
+  el('banner-sub').textContent = sub || '';
+  el('banner').classList.remove('hidden');
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => el('banner').classList.add('hidden'), dur);
+}
+
+// ---------------- player flight ----------------
+const keys = {};
+let joy = { x: 0, y: 0, active: false };
+let touchBoost = false;
+const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches;
+function playerForward() { return _v1.set(0, 0, -1).applyQuaternion(player.group.quaternion); }
+function updatePlayer(dt) {
+  const up = SAVE.upgrades;
+  if (player.invuln > 0) player.invuln -= dt;
+  if (player.hurtCd > 0) player.hurtCd -= dt;
+  // --- input → pitch / bank targets
+  let pitchIn = 0, rollIn = 0;
+  if (keys.KeyW || keys.ArrowUp) pitchIn += 1;
+  if (keys.KeyS || keys.ArrowDown) pitchIn -= 1;
+  if (keys.KeyA || keys.ArrowLeft) rollIn += 1;
+  if (keys.KeyD || keys.ArrowRight) rollIn -= 1;
+  if (joy.active) { pitchIn += -joy.y; rollIn += -joy.x; }
+  pitchIn = clamp(pitchIn, -1, 1); rollIn = clamp(rollIn, -1, 1);
+  player.pitch = clamp((player.pitch ?? 0) + pitchIn * 1.35 * dt, -1.05, 1.05);
+  if (pitchIn === 0) player.pitch *= Math.pow(0.4, dt);                    // gentle self-level
+  player.bank = ((player.bank ?? 0) + (rollIn * 1.05 - (player.bank ?? 0)) * Math.min(1, dt * 7));
+  player.yaw = (player.yaw ?? 0) - Math.sin(player.bank) * 1.25 * dt;
+  // --- barrel roll
+  let rollExtra = 0;
+  if (player.rollT > 0) {
+    player.rollT -= dt;
+    rollExtra = (1 - Math.max(0, player.rollT) / 0.7) * Math.PI * 2 * player.rollDir;
+    if (player.rollT <= 0) rollExtra = 0;
+  }
+  player.group.quaternion.setFromEuler(new THREE.Euler(player.pitch, player.yaw, player.bank + rollExtra, 'YXZ'));
+  // --- speed / boost
+  const baseSpeed = 118 + up.engine * 15;
+  const boosting = (keys.ShiftLeft || keys.ShiftRight || touchBoost) && player.boost > 0.02;
+  player.boosting = boosting;
+  if (boosting) player.boost = Math.max(0, player.boost - dt * 0.32);
+  else player.boost = Math.min(1, player.boost + dt * (0.13 + up.engine * 0.02));
+  const targetSpeed = baseSpeed * (boosting ? 1.75 : 1);
+  player.speed += (targetSpeed - player.speed) * Math.min(1, dt * 1.6);
+  const fwd = playerForward().clone();
+  player.group.position.addScaledVector(fwd, player.speed * dt);
+  const pos = player.group.position;
+  // --- world limits
+  const gy = ENV.groundY(pos.x, pos.z);
+  if (pos.y < gy + 5) { pos.y = gy + 5; player.pitch = Math.max(player.pitch, 0.3); damagePlayer(9); player.invuln = Math.max(player.invuln, 0.7); }
+  if (pos.y > 1500) pos.y = 1500;
+  for (const c of ENV.colliders) {
+    const dx = pos.x - c.x, dz = pos.z - c.z;
+    if (dx * dx + dz * dz < c.r * c.r && pos.y < c.h + 4) {
+      damagePlayer(12);
+      const d = Math.max(1, Math.hypot(dx, dz));
+      pos.x = c.x + dx / d * (c.r + 6); pos.z = c.z + dz / d * (c.r + 6);
+      player.invuln = Math.max(player.invuln, 0.8);
+    }
+  }
+  const rr = Math.hypot(pos.x, pos.z);
+  el('warning').classList.toggle('hidden', !(rr > WORLD_R && state === 'flying'));
+  if (rr > WORLD_R) {
+    const toCentre = Math.atan2(-pos.x, -pos.z);
+    let dy = toCentre - player.yaw;
+    while (dy > Math.PI) dy -= Math.PI * 2;
+    while (dy < -Math.PI) dy += Math.PI * 2;
+    player.yaw += clamp(dy, -1, 1) * dt * 0.7;
+  }
+  // --- flames & contrails
+  const fl = 0.55 + (player.speed / (baseSpeed * 1.75)) * (boosting ? 1.7 : 1);
+  for (const f of player.group.userData.flames) f.scale.set(1, fl * rand(0.9, 1.1), 1);
+  if (boosting && Math.random() < 0.6) {
+    _v2.set(-6.4, 0, 2).applyQuaternion(player.group.quaternion).add(pos); trailFx(_v2, fwd);
+    _v2.set(6.4, 0, 2).applyQuaternion(player.group.quaternion).add(pos); trailFx(_v2, fwd);
+  }
+  // --- cannon
+  player.fireCd -= dt;
+  const wantFire = keys.Space || (IS_TOUCH && autoFireReady());
+  if (wantFire && player.fireCd <= 0 && player.alive) {
+    player.fireCd = 1 / (9 + up.weapon * 1.6);
+    for (const sx of [-2.6, 2.6]) {
+      _v2.set(sx, -0.5, -2).applyQuaternion(player.group.quaternion).add(pos);
+      const dir = fwd.clone(); dir.x += rand(-0.008, 0.008); dir.y += rand(-0.008, 0.008); dir.normalize();
+      fireBullet(_v2.clone(), dir, player.speed + 560, 10 + up.weapon * 4, false);
+    }
+    SoundFX.shoot();
+  }
+  EngineAudio.update(player.speed / (baseSpeed * 1.75), boosting, dt);
+}
+function autoFireReady() {
+  const fwd = playerForward();
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    _v2.copy(e.group.position).sub(player.group.position);
+    if (_v2.length() < 950 && fwd.dot(_v2.normalize()) > 0.965) return true;
+  }
+  for (const t of targets) {
+    if (!t.alive || t.friendly) continue;
+    _v2.copy(t.group.position).sub(player.group.position);
+    if (_v2.length() < 950 && fwd.dot(_v2.normalize()) > 0.94) return true;
+  }
+  return false;
+}
+function triggerRoll(dir) {
+  if (player.rollT > 0 || state !== 'flying') return;
+  player.rollT = 0.7; player.rollDir = dir;
+  SoundFX.roll();
+}
+
+// ---------------- lock-on & missiles ----------------
+let lockTarget = null, lockProgress = 0, lockBeepT = 0;
+function lockCandidate() {
+  const fwd = playerForward();
+  let best = null, bestScore = 0.9;
+  const consider = (o, radius) => {
+    _v2.copy(o.group.position).sub(player.group.position);
+    const d = _v2.length();
+    if (d > 1800 || d < 30) return;
+    const dot = fwd.dot(_v2.normalize());
+    if (dot > bestScore) { bestScore = dot; best = o; }
+  };
+  for (const e of enemies) if (e.alive) consider(e);
+  for (const t of targets) if (t.alive && !t.friendly) consider(t);
+  return best;
+}
+function updateLock(dt) {
+  const cand = state === 'flying' ? lockCandidate() : null;
+  if (cand && cand === lockTarget) {
+    if (lockProgress < 1) {
+      lockProgress = Math.min(1, lockProgress + dt / 0.8);
+      lockBeepT -= dt;
+      if (lockBeepT <= 0 && lockProgress < 1) { lockBeepT = 0.22; SoundFX.lockBeep(); }
+      if (lockProgress >= 1) SoundFX.locked();
+    }
+  } else {
+    lockTarget = cand; lockProgress = cand ? Math.min(lockProgress, 0.25) : 0;
+  }
+  const lb = el('lockbox'), lp = el('lockprog');
+  if (lockTarget && lockTarget.alive) {
+    _v3.copy(lockTarget.group.position).project(camera);
+    if (_v3.z < 1) {
+      const x = (_v3.x * 0.5 + 0.5) * window.innerWidth, y = (-_v3.y * 0.5 + 0.5) * window.innerHeight;
+      lb.style.display = 'block';
+      lb.style.left = x + 'px'; lb.style.top = y + 'px';
+      lb.style.borderColor = lockProgress >= 1 ? '#ff5252' : '#ffb454';
+      lp.textContent = lockProgress >= 1 ? '' : `LOCKING ${Math.round(lockProgress * 100)}%`;
+      lp.style.left = x + 'px'; lp.style.top = (y + 52) + 'px';
+    } else lb.style.display = 'none';
+  } else { lb.style.display = 'none'; lp.textContent = ''; }
+}
+function fireMissile() {
+  if (state !== 'flying' || !player.alive) return;
+  if (!lockTarget || !lockTarget.alive || lockProgress < 1) { SoundFX.lockBeep(); return; }
+  if (player.missiles <= 0) { showBanner('NO MISSILES', 'CANNON ONLY', 900); return; }
+  player.missiles--;
+  spawnMissile({ group: player.group }, lockTarget, 65 + SAVE.upgrades.weapon * 22);
+  lockProgress = 0.4;
+}
+
+// ================================================================
+// 8. FLOW — screens, launch, debrief, upgrades
+// ================================================================
+function showScreen(id) {
+  for (const s of ['screen-start', 'screen-lobby', 'screen-brief', 'screen-debrief', 'screen-end']) el(s).classList.add('hidden');
+  if (id) el(id).classList.remove('hidden');
+  el('hud').classList.toggle('hidden', id !== null);
+  el('touch').classList.toggle('hidden', !(id === null && IS_TOUCH));
+}
+function updateHudTop() {
+  el('hud-score').textContent = SAVE.score.toLocaleString();
+  el('hud-rank').textContent = 'RANK: ' + rankName(SAVE.score);
+  el('hud-credits').textContent = `⬡ ${SAVE.credits} CR`;
+}
+function showBrief(i) {
+  const m = MISSIONS[i];
+  el('brief-title').textContent = m.name;
+  el('brief-loc').textContent = m.loc;
+  el('brief-time').textContent = m.time;
+  el('brief-obj').textContent = m.obj;
+  el('brief-targets').textContent = m.targets;
+  el('brief-rank').textContent = rankName(SAVE.score);
+  el('brief-credits').textContent = SAVE.credits + ' CR';
+  state = 'brief';
+  showScreen('screen-brief');
+}
+function clearBattlefield() {
+  for (const e of enemies) scene.remove(e.group);
+  enemies.length = 0;
+  for (const t of targets) scene.remove(t.group);
+  targets.length = 0;
+  for (const b of bullets) scene.remove(b.mesh);
+  bullets.length = 0;
+  for (const m of missiles) scene.remove(m.group);
+  missiles.length = 0;
+}
+function launchMission(i) {
+  clearBattlefield();
+  clearEnvironment();
+  applySky(i);
+  ENV.update = ENV_BUILDERS[i](ENV.group);
+  const up = SAVE.upgrades;
+  MISSION = { idx: i, time: 0, spawned: 0, fightersDown: 0, totalFighters: 0, spawnQueue: [], enemyDmg: MISSIONS[i].enemyDmg, convoy: !!MISSIONS[i].convoy, trucks: [], boss: null, over: false };
+  Object.assign(MISSION, { name: MISSIONS[i].name });
+  // player reset
+  player.hp = player.maxHp = 100 + up.armor * 35;
+  player.missiles = 6 + up.weapon;
+  player.boost = 1; player.speed = 120; player.alive = true;
+  player.yaw = 0; player.pitch = 0; player.bank = 0; player.rollT = 0; player.invuln = 0;
+  player.group.position.set(0, i === 5 ? 480 : 150, 1000);
+  player.group.visible = true;
+  if (!player.group.parent) scene.add(player.group);
+  missionKills = 0;
+  lockTarget = null; lockProgress = 0;
+  // wingman
+  wingman.level = up.wingman;
+  wingman.active = up.wingman > 0;
+  wingman.group.visible = wingman.active;
+  if (wingman.active && !wingman.group.parent) scene.add(wingman.group);
+  if (wingman.active) wingman.group.position.copy(player.group.position).add(new THREE.Vector3(-30, 5, 34));
+  MISSIONS[i].setup();
+  el('hud-mission').textContent = MISSIONS[i].name;
+  state = 'flying';
+  showScreen(null);
+  updateHudTop();
+  showBanner(MISSIONS[i].name.split('—')[1].trim(), MISSIONS[i].loc, 2600);
+  SoundFX.radio();
+}
+function checkMissionEnd() {
+  if (!MISSION || MISSION.over || state !== 'flying') return;
+  const r = MISSIONS[MISSION.idx].winWhen();
+  if (r === 'fail') endMission(false);
+  else if (r) endMission(true);
+}
+function endMission(win) {
+  if (!MISSION || MISSION.over) return;
+  MISSION.over = true;
+  state = 'debrief';
+  const bonusScore = win ? 400 : 0, bonusCr = win ? 80 : 15;
+  if (win) { SAVE.score += bonusScore; SAVE.credits += bonusCr; }
+  el('debrief-kicker').textContent = win ? 'Mission Complete' : 'Mission Failed';
+  el('debrief-title').textContent = MISSIONS[MISSION.idx].name + (win ? ' — CLEARED' : ' — FAILED');
+  const rows = [
+    ['Targets destroyed', missionKills],
+    ['Mission time', `${Math.floor(MISSION.time / 60)}:${String(Math.floor(MISSION.time % 60)).padStart(2, '0')}`],
+    ['Hull remaining', `${Math.max(0, Math.ceil(player.hp / player.maxHp * 100))}%`],
+    ['Completion bonus', win ? `+${bonusScore} PTS · +${bonusCr} CR` : `+${bonusCr} CR (salvage)`],
+    ['Total score', SAVE.score.toLocaleString()],
+    ['Pilot reputation', rankName(SAVE.score)],
+    ['Credits', `${SAVE.credits} CR`],
+  ];
+  el('debrief-rows').innerHTML = rows.map(([k, v]) => `<div class="rowline"><span>${k}</span><b>${v}</b></div>`).join('');
+  el('btn-next').style.display = win ? '' : 'none';
+  el('btn-next').textContent = MISSION.idx >= 5 ? 'Final Debrief ▶' : 'Back to Lobby ▶';
+  if (win) SAVE.unlocked = Math.max(SAVE.unlocked, Math.min(5, MISSION.idx + 1));
+  renderUpgrades(el('upgrade-grid'), () => {
+    el('debrief-rows').lastElementChild.innerHTML = `<span>Credits</span><b>${SAVE.credits} CR</b>`;
+  });
+  showScreen('screen-debrief');
+  updateHudTop();
+}
+function renderUpgrades(grid, afterBuy) {
+  grid.innerHTML = '';
+  for (const def of UPGRADE_DEFS) {
+    const lvl = SAVE.upgrades[def.key];
+    const maxed = lvl >= def.costs.length;
+    const cost = maxed ? null : def.costs[lvl];
+    const card = document.createElement('div');
+    card.className = 'upcard';
+    card.innerHTML = `<h3>${def.name} <span class="pips">${'●'.repeat(lvl)}${'○'.repeat(def.costs.length - lvl)}</span></h3>
+      <p>${def.desc}</p>
+      <button class="btn small" ${maxed || SAVE.credits < cost ? 'disabled' : ''}>${maxed ? 'MAX LEVEL' : `Upgrade — ${cost} CR`}</button>`;
+    const btn = card.querySelector('button');
+    if (!maxed) btn.addEventListener('click', () => {
+      if (SAVE.credits < cost) return;
+      SAVE.credits -= cost; SAVE.upgrades[def.key]++;
+      SoundFX.upgrade();
+      renderUpgrades(grid, afterBuy); updateHudTop();
+      if (afterBuy) afterBuy();
+      if (state === 'lobby') showLobby(true);
+    });
+    grid.appendChild(card);
+  }
+}
+// ---------------- lobby / hangar ----------------
+function showLobby(keepScroll) {
+  state = 'lobby';
+  el('lobby-rank').textContent = rankName(SAVE.score);
+  el('lobby-score').textContent = SAVE.score.toLocaleString();
+  el('lobby-credits').textContent = SAVE.credits + ' CR';
+  el('lobby-kills').textContent = SAVE.kills;
+  const list = el('lobby-missions');
+  list.innerHTML = '';
+  MISSIONS.forEach((m, i) => {
+    const b = document.createElement('button');
+    b.className = 'mission-btn' + (i === SAVE.mission ? ' sel' : '');
+    const locked = i > SAVE.unlocked;
+    const cleared = i < SAVE.unlocked || (i === 5 && SAVE.unlocked >= 5 && false);
+    b.disabled = locked;
+    b.innerHTML = `<span>${m.name}<small>${m.loc} · ${m.time}</small></span><b>${locked ? '🔒' : i === SAVE.mission ? '▶' : ''}</b>`;
+    b.addEventListener('click', () => { SAVE.mission = i; SoundFX.lockBeep(); showLobby(true); });
+    list.appendChild(b);
+  });
+  renderUpgrades(el('lobby-upgrades'));
+  showScreen('screen-lobby');
+}
+
+// ================================================================
+// 9. HUD — gauges, radar minimap, cockpit pitch ladder
+// ================================================================
+const radarCtx = el('radar').getContext('2d');
+const ladderCtx = el('ladder').getContext('2d');
+function updateHud() {
+  el('hull-bar').style.width = `${Math.max(0, player.hp / player.maxHp * 100)}%`;
+  el('hull-bar').parentElement.classList.toggle('low', player.hp / player.maxHp < 0.3);
+  el('hull-num').textContent = `${Math.max(0, Math.ceil(player.hp / player.maxHp * 100))}%`;
+  el('boost-bar').style.width = `${player.boost * 100}%`;
+  el('missile-num').textContent = `MSL ${player.missiles}`;
+  el('gauge-spd').textContent = Math.round(player.speed * 2.1);
+  el('gauge-alt').textContent = Math.round(player.group.position.y * 3.28);
+  const fwd = playerForward();
+  let hdg = Math.round((Math.atan2(fwd.x, -fwd.z) * 180 / Math.PI + 360) % 360);
+  el('gauge-hdg').textContent = String(hdg).padStart(3, '0');
+  if (MISSION) el('hud-objective').textContent = MISSIONS[MISSION.idx].objText();
+  drawRadar();
+  if (camMode === 'cockpit') drawLadder();
+}
+function drawRadar() {
+  const ctx = radarCtx, S = 296, C = S / 2, RANGE = 2400;
+  ctx.clearRect(0, 0, S, S);
+  ctx.strokeStyle = 'rgba(125,249,255,.35)'; ctx.lineWidth = 2;
+  for (const r of [0.33, 0.66, 1]) { ctx.beginPath(); ctx.arc(C, C, C * r - 2, 0, 6.29); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(C, 4); ctx.lineTo(C, S - 4); ctx.moveTo(4, C); ctx.lineTo(S - 4, C); ctx.stroke();
+  const yaw = player.yaw ?? 0;
+  const plot = (p, color, size) => {
+    let dx = p.x - player.group.position.x, dz = p.z - player.group.position.z;
+    const d = Math.hypot(dx, dz); if (d > RANGE) return;
+    const s = Math.sin(yaw), c = Math.cos(yaw);
+    const rx = dx * c - dz * s, rz = dx * s + dz * c;
+    ctx.fillStyle = color;
+    ctx.fillRect(C + rx / RANGE * C - size / 2, C + rz / RANGE * C - size / 2, size, size);
+  };
+  for (const t of targets) { if (!t.alive) continue; plot(t.group.position, t.friendly ? '#51ff7a' : t.kind === 'boss' ? '#ff2222' : '#ffb454', t.kind === 'boss' ? 12 : 7); }
+  for (const e of enemies) if (e.alive) plot(e.group.position, e.ace ? '#ff2222' : '#ff5a3a', 6);
+  if (wingman.active) plot(wingman.group.position, '#54e0ff', 6);
+  // player wedge
+  ctx.fillStyle = '#eafcff';
+  ctx.beginPath(); ctx.moveTo(C, C - 9); ctx.lineTo(C - 6, C + 7); ctx.lineTo(C + 6, C + 7); ctx.closePath(); ctx.fill();
+}
+function drawLadder() {
+  const ctx = ladderCtx, S = 460, C = S / 2;
+  ctx.clearRect(0, 0, S, S);
+  ctx.save();
+  ctx.translate(C, C);
+  ctx.rotate(player.bank ?? 0);
+  const pxPerDeg = 4.2, pitchDeg = (player.pitch ?? 0) * 57.3;
+  ctx.strokeStyle = 'rgba(125,249,255,.85)'; ctx.fillStyle = 'rgba(125,249,255,.9)';
+  ctx.lineWidth = 2.5; ctx.font = '20px Consolas';
+  for (let d = -30; d <= 30; d += 10) {
+    if (d === 0) continue;
+    const y = (d - pitchDeg) * pxPerDeg;
+    if (Math.abs(y) > 190) continue;
+    const w = d > 0 ? 54 : 40;
+    ctx.beginPath(); ctx.moveTo(-w - 30, y); ctx.lineTo(-30, y); ctx.moveTo(30, y); ctx.lineTo(w + 30, y);
+    if (d < 0) { ctx.moveTo(-w - 30, y); ctx.lineTo(-w - 30, y + 8); ctx.moveTo(w + 30, y); ctx.lineTo(w + 30, y + 8); }
+    ctx.stroke();
+    ctx.fillText(String(Math.abs(d)), -w - 62, y + 6); ctx.fillText(String(Math.abs(d)), w + 38, y + 6);
+  }
+  const hy = -pitchDeg * pxPerDeg;
+  ctx.strokeStyle = '#ffb454'; ctx.lineWidth = 3.5;
+  ctx.beginPath(); ctx.moveTo(-95, hy); ctx.lineTo(95, hy); ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = '#ffb454'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(C - 42, C); ctx.lineTo(C - 12, C); ctx.lineTo(C, C + 9); ctx.lineTo(C + 12, C); ctx.lineTo(C + 42, C); ctx.stroke();
+}
+
+// ================================================================
+// 10. CAMERA — chase & cockpit, with shake
+// ================================================================
+const camPos = new THREE.Vector3(0, 200, 1150);
+function updateCamera(dt) {
+  shakeAmp *= Math.pow(0.02, dt);
+  if (shakeAmp < 0.01) shakeAmp = 0;
+  const sh = () => (Math.random() - 0.5) * 2 * shakeAmp;
+  if (state === 'menu' || state === 'brief' || state === 'lobby') {
+    const t = elapsed * 0.07;
+    camera.position.set(Math.cos(t) * 420, 130 + Math.sin(elapsed * 0.23) * 26, Math.sin(t) * 420 - 200);
+    camera.lookAt(0, 30, -100);
+    return;
+  }
+  const pos = player.group.position;
+  if (camMode === 'cockpit') {
+    player.group.visible = false;
+    _v1.set(0, 2.1, -1.6).applyQuaternion(player.group.quaternion).add(pos);
+    camera.position.copy(_v1);
+    camera.quaternion.copy(player.group.quaternion);
+    camera.rotateZ(sh() * 0.01);
+    camera.position.x += sh() * 0.3; camera.position.y += sh() * 0.3;
+  } else {
+    player.group.visible = player.alive;
+    _v1.set(0, 6.8, 23).applyQuaternion(player.group.quaternion).add(pos);
+    camPos.lerp(_v1, Math.min(1, dt * 5.2));
+    camera.position.copy(camPos);
+    camera.position.x += sh() * 1.6; camera.position.y += sh() * 1.6;
+    _v2.copy(pos).addScaledVector(playerForward(), 46);
+    camera.lookAt(_v2);
+  }
+  const baseFov = 72, target = player.boosting ? 80 : baseFov;
+  camera.fov += (target - camera.fov) * Math.min(1, dt * 5);
+  camera.updateProjectionMatrix();
+}
+
+// ================================================================
+// 11. INPUT — keyboard, HUD buttons, touch joystick
+// ================================================================
+window.addEventListener('keydown', e => {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+  if (e.code === 'KeyQ') triggerRoll(1);
+  if (e.code === 'KeyE') triggerRoll(-1);
+  if (e.code === 'KeyF') fireMissile();
+  if (e.code === 'KeyC') toggleCamera();
+  if (e.code === 'KeyP') togglePause();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+function toggleCamera() {
+  camMode = camMode === 'chase' ? 'cockpit' : 'chase';
+  el('btn-camera').textContent = 'Cam: ' + (camMode === 'chase' ? 'Chase' : 'Cockpit');
+  el('ladder').classList.toggle('hidden', camMode !== 'cockpit');
+  if (camMode === 'chase') player.group.visible = player.alive;
+}
+let paused = false;
+function togglePause() {
+  if (state !== 'flying' && !paused) return;
+  paused = !paused;
+  showBanner(paused ? 'PAUSED' : 'RESUMED', paused ? 'PRESS P TO RESUME' : '', paused ? 999999 : 800);
+  if (!paused) el('banner').classList.add('hidden');
+}
+el('btn-camera').addEventListener('click', toggleCamera);
+el('btn-pause').addEventListener('click', togglePause);
+// touch joystick
+const stickBase = el('stick-base'), stickKnob = el('stick-knob');
+let stickId = null;
+function stickMove(e) {
+  const r = stickBase.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  let dx = (e.clientX - cx) / (r.width / 2), dy = (e.clientY - cy) / (r.height / 2);
+  const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
+  joy.x = dx; joy.y = dy; joy.active = true;
+  stickKnob.style.transform = `translate(calc(-50% + ${dx * 34}px), calc(-50% + ${dy * 34}px))`;
+}
+stickBase.addEventListener('pointerdown', e => { stickId = e.pointerId; stickBase.setPointerCapture(stickId); stickMove(e); });
+stickBase.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickMove(e); });
+const stickEnd = e => { if (e.pointerId === stickId) { stickId = null; joy = { x: 0, y: 0, active: false }; stickKnob.style.transform = 'translate(-50%,-50%)'; } };
+stickBase.addEventListener('pointerup', stickEnd);
+stickBase.addEventListener('pointercancel', stickEnd);
+el('btn-missile').addEventListener('pointerdown', e => { e.preventDefault(); fireMissile(); });
+el('btn-roll').addEventListener('pointerdown', e => { e.preventDefault(); triggerRoll(1); });
+el('btn-boost').addEventListener('pointerdown', e => { e.preventDefault(); touchBoost = true; });
+el('btn-boost').addEventListener('pointerup', () => { touchBoost = false; });
+el('btn-boost').addEventListener('pointerleave', () => { touchBoost = false; });
+// screen buttons
+el('btn-start').addEventListener('click', () => {
+  audioCtx.resume();
+  EngineAudio.start();
+  Ambience.stop();
+  SoundFX.radio();
+  showLobby();
+});
+el('btn-lobby-launch').addEventListener('click', () => showBrief(SAVE.mission));
+el('btn-launch').addEventListener('click', () => launchMission(SAVE.mission));
+el('btn-retry').addEventListener('click', () => launchMission(MISSION.idx));
+el('btn-next').addEventListener('click', () => {
+  if (MISSION.idx >= 5) {
+    el('end-stats').textContent = `FINAL SCORE ${SAVE.score.toLocaleString()} · REPUTATION: ${rankName(SAVE.score)} · ${SAVE.kills} KILLS`;
+    state = 'end'; showScreen('screen-end');
+  } else { SAVE.mission = MISSION.idx + 1; showLobby(); }
+});
+el('btn-again').addEventListener('click', () => {
+  SAVE.score = 0; SAVE.credits = 0; SAVE.mission = 0; SAVE.kills = 0; SAVE.unlocked = 0;
+  SAVE.upgrades = { weapon: 0, engine: 0, armor: 0, wingman: 0 };
+  showLobby();
+});
+
+// ================================================================
+// 12. MAIN LOOP
+// ================================================================
+function initBackdrop() {
+  clearEnvironment();
+  applySky(0);
+  ENV.update = ENV_BUILDERS[0](ENV.group);
+  player.group.position.set(0, 4, 300);
+  player.group.rotation.y = Math.PI;
+  scene.add(player.group);
+  state = 'menu';
+}
+let lastTime = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, Math.max(0, (now - lastTime) / 1000));
+  lastTime = now;
+  elapsed += dt;
+  if (!paused) {
+    if (ENV.update) ENV.update(dt, elapsed, player.group.position);
+    sparks.update(dt); smoke.update(dt);
+    if (state === 'flying' && MISSION && !MISSION.over) {
+      MISSION.time += dt;
+      for (let i = MISSION.spawnQueue.length - 1; i >= 0; i--) {
+        if (MISSION.time >= MISSION.spawnQueue[i].at) { spawnWave(MISSION.spawnQueue[i].n, MISSION.spawnQueue[i].ace, 1600); MISSION.spawnQueue.splice(i, 1); }
+      }
+      updatePlayer(dt);
+      updateEnemies(dt);
+      updateWingman(dt);
+      updateTargets(dt, elapsed);
+      updateBullets(dt);
+      updateMissiles(dt);
+      updateLock(dt);
+      if (MISSION.time > 2) checkMissionEnd();
+    }
+  }
+  updateCamera(dt);
+  if (state === 'flying') updateHud();
+  renderer.render(scene, camera);
+}
+initBackdrop();
+requestAnimationFrame(frame);
+// Small handle for automated play-testing (harmless in play).
+window.__ironSkies = { SAVE, player, enemies, targets, MISSIONS, launchMission, damageEnemy, damageTarget, getState: () => state, getMission: () => MISSION };
+// Ambience starts on the first interaction anywhere (autoplay policy).
+window.addEventListener('pointerdown', function arm() {
+  audioCtx.resume();
+  if (state === 'menu') Ambience.start();
+  window.removeEventListener('pointerdown', arm);
+});
+</script>
+</body>
+</html>
