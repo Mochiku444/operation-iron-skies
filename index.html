@@ -113,6 +113,14 @@
   .jet-info .pips b{color:var(--hud);font-weight:400;letter-spacing:.16em}
   .jet-info p{margin-top:12px;font-size:13.5px;line-height:1.6;color:#a9cdd9}
   .hangar-actions{display:flex;gap:8px;margin-top:10px}
+  #btn-open-jets{width:100%;margin-top:10px;padding:12px;position:relative;cursor:pointer;font-family:inherit;
+    font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:#eafcff;
+    background:linear-gradient(180deg,rgba(16,42,60,.92),rgba(6,18,28,.95));border:1px solid rgba(125,249,255,.65);
+    box-shadow:0 0 16px rgba(0,140,255,.28)}
+  #btn-open-jets:hover{border-color:var(--amber);color:#fff}
+  #btn-open-jets::before,#btn-open-jets::after{content:"";position:absolute;width:10px;height:10px;border:2px solid var(--amber)}
+  #btn-open-jets::before{left:-2px;top:-2px;border-right:none;border-bottom:none}
+  #btn-open-jets::after{right:-2px;bottom:-2px;border-left:none;border-top:none}
   .hangar-actions button{flex:1;cursor:pointer;padding:10px 6px;font-family:inherit;font-size:11.5px;
     letter-spacing:.13em;text-transform:uppercase;color:var(--hud);background:rgba(6,18,28,.72);border:1px solid var(--line)}
   .hangar-actions button:hover{border-color:var(--amber);color:#fff}
@@ -328,7 +336,7 @@
           <div class="pips" id="jet-info-pips"></div>
           <p id="jet-info-desc"></p>
         </div>
-        <button id="btn-open-jets" class="btn ghost" style="width:100%;margin-top:10px;padding:10px">✈ Change Aircraft</button>
+        <button id="btn-open-jets"><span style="color:var(--amber)">✈</span> Change Aircraft</button>
         <div class="hangar-actions">
           <button id="btn-drawer-armory">⚙ Armory & Workshop</button>
           <button id="btn-drawer-record">🎖 Service Record</button>
