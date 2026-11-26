@@ -75,8 +75,8 @@
   .medal.locked{opacity:.42;filter:grayscale(.8)}
 
   /* ---------- hangar lobby (3D stage, concept layout) ---------- */
-  #screen-lobby{padding:0;overflow:hidden;background:#04070d}
-  #hangar-canvas{position:absolute;inset:0;width:100%;height:100%}
+  #screen-lobby{padding:0;overflow:hidden;background:#04070d;touch-action:pan-y}
+  #hangar-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab}
   .hangar-ui{position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;padding:10px 20px 12px;overflow-y:auto}
   .hangar-ui button{pointer-events:auto}
   .hangar-head{text-align:center;pointer-events:none}
@@ -110,9 +110,7 @@
     letter-spacing:.13em;text-transform:uppercase;color:var(--hud);background:rgba(6,18,28,.72);border:1px solid var(--line)}
   .hangar-actions button:hover{border-color:var(--amber);color:#fff}
   .hangar-bottom{text-align:center}
-  #lobby-missions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:1020px;margin:0 auto}
-  #lobby-missions .mission-btn{width:auto;margin-top:0;padding:6px 12px;font-size:12.5px}
-  #lobby-missions .mission-btn small{display:inline;margin:0 0 0 7px;font-size:10px}
+  #lobby-missions{margin-top:10px;text-align:left}
   .btn.engage{margin-top:10px;padding:12px 50px;font-size:clamp(15px,2.6vw,18px)}
   .mode-row{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
   .mode-row .mission-btn{width:auto;margin-top:0;padding:8px 14px;font-size:12px}
@@ -296,8 +294,6 @@
       </div>
     </div>
     <div class="hangar-bottom">
-      <div class="hangar-label" style="text-align:center">Select Mission</div>
-      <div id="lobby-missions"></div>
       <div><button class="btn engage" id="btn-lobby-launch">▶ ENGAGE MISSION</button></div>
       <div class="mode-row">
         <button class="mission-btn" id="btn-mode-free"><span>FREE FLIGHT<small>ASTERIA COAST · NO HOSTILES · JUST FLY</small></span><b>▶</b></button>
@@ -323,6 +319,17 @@
         <div id="lobby-medals"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ================= MISSION SELECT ================= -->
+<div id="screen-missions" class="screen hidden">
+  <div class="panel">
+    <div class="kicker">Squadron 07 · Operations</div>
+    <h2>SELECT MISSION</h2>
+    <p class="obj" style="margin:8px 0 4px">Choose your sortie. Locked missions open as you clear the campaign.</p>
+    <div id="lobby-missions"></div>
+    <div class="center"><button class="btn ghost" id="btn-missions-back">← Back to Hangar</button></div>
   </div>
 </div>
 
@@ -1729,8 +1736,28 @@ function initHangar() {
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; sc.add(ring);
   const ring2 = new THREE.Mesh(new THREE.RingGeometry(6.9, 7.02, 48), new THREE.MeshBasicMaterial({ color: 0x1d5f74 }));
   ring2.rotation.x = -Math.PI / 2; ring2.position.y = 0.03; sc.add(ring2);
-  hangar = { r, sc, cam, jet: null, t: 0, w: 0, h: 0, running: false };
+  hangar = { r, sc, cam, jet: null, t: 0, w: 0, h: 0, running: false, userRot: -0.55, dragging: false, dragX: 0 };
+  window.__hangar = hangar;
   setHangarJet(SAVE.jet || 'phantom');
+  setupHangarDrag();
+}
+// Drag left/right on the open hangar stage to turn the aircraft.
+function setupHangarDrag() {
+  const stage = el('screen-lobby');
+  const okTarget = (t) => t === el('hangar-canvas') || t.classList.contains('hangar-ui') || t.classList.contains('hangar-mid') || t.classList.contains('hangar-bottom');
+  stage.addEventListener('pointerdown', e => {
+    if (state !== 'lobby' || !hangar || !okTarget(e.target)) return;
+    hangar.dragging = true; hangar.dragX = e.clientX;
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!hangar || !hangar.dragging) return;
+    hangar.userRot += (e.clientX - hangar.dragX) * 0.01;
+    hangar.dragX = e.clientX;
+  });
+  const end = () => { if (hangar) hangar.dragging = false; };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
 }
 function setHangarJet(id) {
   if (!hangar) return;
@@ -1742,7 +1769,7 @@ function setHangarJet(id) {
   g.userData.flames.forEach(f => { f.visible = false; });
   g.scale.multiplyScalar(0.92);
   g.position.y = 1.55;
-  g.rotation.y = -0.55;
+  g.rotation.y = hangar.userRot;
   hangar.jet = g;
   hangar.sc.add(g);
 }
@@ -1761,7 +1788,7 @@ function startHangar() {
     }
     hangar.t += 0.016;
     if (hangar.jet) {
-      hangar.jet.rotation.y = -0.55 + Math.sin(hangar.t * 0.35) * 0.3;
+      hangar.jet.rotation.y = hangar.userRot + (hangar.dragging ? 0 : Math.sin(hangar.t * 0.35) * 0.12);
       hangar.jet.position.y = 1.55 + Math.sin(hangar.t * 1.3) * 0.07;
     }
     hangar.r.render(hangar.sc, hangar.cam);
@@ -1776,7 +1803,7 @@ document.querySelectorAll('.drawer-close').forEach(b => b.addEventListener('clic
 // 8. FLOW — screens, launch, debrief, upgrades
 // ================================================================
 function showScreen(id) {
-  for (const s of ['screen-start', 'screen-lobby', 'screen-brief', 'screen-debrief', 'screen-end']) el(s).classList.add('hidden');
+  for (const s of ['screen-start', 'screen-lobby', 'screen-missions', 'screen-brief', 'screen-debrief', 'screen-end']) el(s).classList.add('hidden');
   if (id) el(id).classList.remove('hidden');
   el('hud').classList.toggle('hidden', id !== null);
   el('touch').classList.toggle('hidden', !(id === null && IS_TOUCH));
@@ -2027,13 +2054,17 @@ function showLobby(keepScroll) {
     const cleared = i < SAVE.unlocked || (i === 5 && SAVE.unlocked >= 5 && false);
     b.disabled = locked;
     b.innerHTML = `<span>${m.name}<small>${m.loc} · ${m.time}</small></span><b>${locked ? '🔒' : i === SAVE.mission ? '▶' : ''}</b>`;
-    b.addEventListener('click', () => { SAVE.mission = i; SoundFX.lockBeep(); showLobby(true); });
+    b.addEventListener('click', () => { SAVE.mission = i; saveGame(); SoundFX.lockBeep(); showBrief(i); });
     list.appendChild(b);
   });
   renderUpgrades(el('lobby-upgrades'));
   renderServiceRecord();
   showScreen('screen-lobby');
   startHangar();
+}
+function showMissions() {
+  state = 'missions';
+  showScreen('screen-missions');
 }
 // ---------------- service record: medals + statistics ----------------
 function fmtFlightTime(sec) {
@@ -2228,7 +2259,8 @@ el('btn-start').addEventListener('click', () => {
   SoundFX.radio();
   showLobby();
 });
-el('btn-lobby-launch').addEventListener('click', () => showBrief(SAVE.mission));
+el('btn-lobby-launch').addEventListener('click', () => showMissions());
+el('btn-missions-back').addEventListener('click', () => showLobby());
 el('btn-mode-free').addEventListener('click', () => launchMode('free'));
 el('btn-mode-endless').addEventListener('click', () => launchMode('endless'));
 let resetArmed = false;
