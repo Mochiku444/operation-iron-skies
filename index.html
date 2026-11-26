@@ -52,6 +52,8 @@
   .upcard p{font-size:12px;color:#9fc6d2;line-height:1.5;margin:5px 0 9px}
   .pips{font-size:13px;color:var(--amber);letter-spacing:.2em}
   .center{text-align:center}
+  .hint-blink{text-align:center;margin-top:16px;color:#8fd8e8;font-size:12.5px;letter-spacing:.28em;text-transform:uppercase;animation:blinkHint 1.6s ease-in-out infinite}
+  @keyframes blinkHint{0%,100%{opacity:.25}50%{opacity:1}}
   /* ---------- lobby ---------- */
   .lobby-wrap{position:relative;width:100%;max-width:880px;max-height:100%;overflow-y:auto}
   .lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
@@ -189,6 +191,7 @@
   </div>
   <div class="callsign">⚠ INCOMING TRANSMISSION — VARKOVIA FEDERATION AIRSPACE VIOLATION CONFIRMED</div>
   <button class="btn" id="btn-start">Pilot, Start Your Engines — Operation Iron Skies</button>
+  <p class="hint-blink">click dimana saja untuk memulai</p>
   <div class="controls-note">
     <b>PC:</b> W/S or ↑/↓ pitch · A/D or ←/→ bank · <b>SPACE</b> fire cannon · <b>F</b> missile · <b>Q/E</b> barrel roll · <b>SHIFT</b> afterburner · <b>C</b> camera · <b>P</b> pause<br>
     <b>Mobile:</b> virtual joystick to fly · cannon auto-fires at targets ahead · tap MISSILE / ROLL / BOOST
@@ -1806,6 +1809,10 @@ el('btn-start').addEventListener('click', () => {
   showLobby();
 });
 el('btn-lobby-launch').addEventListener('click', () => showBrief(SAVE.mission));
+// Click anywhere on the start screen also starts the game.
+document.addEventListener('click', () => {
+  if (state === 'menu' && !el('screen-start').classList.contains('hidden')) el('btn-start').click();
+});
 el('btn-launch').addEventListener('click', () => launchMission(SAVE.mission));
 el('btn-retry').addEventListener('click', () => launchMission(MISSION.idx));
 el('btn-next').addEventListener('click', () => {
