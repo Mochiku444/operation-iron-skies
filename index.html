@@ -56,7 +56,11 @@
   .pips{font-size:13px;color:var(--amber);letter-spacing:.2em}
   .center{text-align:center}
   @keyframes blinkHint{0%,100%{opacity:.25}50%{opacity:1}}
-  .tap-start{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:26px}
+  .tap-start{display:flex;flex-direction:column;align-items:center;gap:12px;margin:26px auto 0;width:fit-content;max-width:92vw;
+    padding:18px 30px;border:1px solid var(--line);background:rgba(6,18,28,.55);position:relative}
+  .tap-start::before,.tap-start::after{content:"";position:absolute;width:14px;height:14px;border:2px solid var(--amber)}
+  .tap-start::before{left:-2px;top:-2px;border-right:none;border-bottom:none}
+  .tap-start::after{right:-2px;bottom:-2px;border-left:none;border-top:none}
   .tap-ring{position:relative;width:44px;height:44px;border:1px solid rgba(125,249,255,.55);border-radius:50%}
   .tap-ring i{position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px rgba(255,180,84,.9)}
   .tap-ring span{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(125,249,255,.75);animation:tapPulse 2s ease-out infinite}
