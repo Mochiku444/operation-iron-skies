@@ -712,6 +712,8 @@ function envAirbase(g) { // M1 — dawn, burning base
   ENV.colliders.push({ x: 120, z: -120, r: 12, h: 48 });
   buildingCluster(g, 460, -300, 9, { h: [12, 32], spread: 150, lit: 0.35 });   // HQ + barracks blocks
   buildingCluster(g, -470, 320, 7, { h: [10, 26], spread: 130, lit: 0.3 });    // depot + admin blocks
+  buildingCluster(g, -400, -2950, 16, { w: [50, 110], h: [80, 250], d: [50, 110], spread: 620, lit: 0.4 }); // Asteria city skyline, north horizon
+  buildingCluster(g, 2750, 1500, 12, { w: [50, 110], h: [70, 210], d: [50, 110], spread: 480, lit: 0.4 });  // eastern suburbs skyline
   const fires = [];
   for (let i = 0; i < 9; i++) { const f = fireGlow(rand(-320, 320), 0, rand(-700, 700), rand(0.8, 1.7)); g.add(f); fires.push(f); }
   addClouds(g, 16, 620, 3600, 0xffd9b0);
@@ -725,6 +727,7 @@ function envValley(g) { // M2 — green valley, river, convoy road
   for (let i = 0; i < 26; i++) {
     const hx = rand(-2600, 2600), hz = rand(-3200, 3200);
     if (Math.abs(hx - 260) < 160 || Math.abs(hx + 620) < 240) continue;
+    if (Math.hypot(hx - 640, hz + 640) < 320 || Math.hypot(hx + 280, hz - 1500) < 300) continue; // keep the village + farmstead clear
     const h = rand(60, 190), r = rand(140, 320);
     const hill = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), hillMat);
     hill.position.set(hx, h / 2 - 4, hz); g.add(hill);
@@ -742,7 +745,7 @@ function envValley(g) { // M2 — green valley, river, convoy road
     M4.makeTranslation(x, 3.5, z); trunks.setMatrixAt(i, M4);
   }
   g.add(trees, trunks);
-  buildingCluster(g, 640, -640, 12, { w: [16, 30], h: [8, 17], d: [16, 30], spread: 140, lit: 0.55 }); // riverside village
+  buildingCluster(g, 640, -640, 22, { w: [22, 46], h: [16, 58], d: [22, 46], spread: 175, lit: 0.55 }); // riverside town — tall blocks
   buildingCluster(g, -280, 1500, 8, { w: [18, 34], h: [9, 20], d: [18, 34], spread: 120, lit: 0.5 });  // farmstead
   addClouds(g, 20, 560, 3800);
   return null;
@@ -808,11 +811,11 @@ function envCity(g) { // M4 — blackout capital, fires and smoke
   const cityMat = new THREE.MeshStandardMaterial({ map: winTex, roughness: 0.85 });
   const geo = new THREE.BoxGeometry(1, 1, 1);
   const blocks = [];
-  for (let gx = -5; gx <= 5; gx++) for (let gz = -6; gz <= 6; gz++) {
-    if ((gx + gz) % 3 === 0 && Math.random() < 0.5) continue;              // streets
+  for (let gx = -6; gx <= 6; gx++) for (let gz = -7; gz <= 7; gz++) {
+    if ((gx + gz) % 3 === 0 && Math.random() < 0.35) continue;             // streets
     const x = gx * 300 + rand(-36, 36), z = gz * 300 + rand(-36, 36);
     if (Math.hypot(x, z) < 260) continue;                                   // plaza at centre
-    const w = rand(52, 92), d = rand(52, 92), h = rand(70, 300);
+    const w = rand(52, 92), d = rand(52, 92), h = rand(80, 380);
     blocks.push({ x, z, w, d, h });
   }
   const inst = new THREE.InstancedMesh(geo, cityMat, blocks.length);
@@ -835,8 +838,10 @@ function envSea(g) { // M5 — animated ocean
   sea.position.y = 0; g.add(sea);
   // Asteria coast: land strip with a port town on the eastern shore
   g.add(box(760, 7, 10000, 0x8a7f63, 2620, 1, 0));
-  buildingCluster(g, 2620, -700, 13, { spread: 300, lit: 0.45 });
-  buildingCluster(g, 2620, 1500, 9, { spread: 240, lit: 0.45 });
+  buildingCluster(g, 2620, -700, 16, { w: [42, 90], h: [25, 115], d: [42, 90], spread: 300, lit: 0.5 });
+  buildingCluster(g, 2620, 1500, 12, { w: [42, 90], h: [25, 100], d: [42, 90], spread: 240, lit: 0.5 });
+  buildingCluster(g, 2620, 700, 10, { w: [36, 75], h: [20, 85], d: [36, 75], spread: 170, lit: 0.5 });
+  buildingCluster(g, 2620, -2100, 12, { w: [42, 90], h: [25, 105], d: [42, 90], spread: 280, lit: 0.5 });
   const lighthouse = new THREE.Mesh(new THREE.CylinderGeometry(5, 7, 64, 8), new THREE.MeshStandardMaterial({ color: 0xd8d3c8, roughness: 0.8 }));
   lighthouse.position.set(2280, 32, 700); g.add(lighthouse);
   g.add(box(10, 7, 10, 0x222222, 2280, 68, 700, { emissive: 0xffe9a8, ei: 1.4 }));
