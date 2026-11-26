@@ -88,12 +88,12 @@
   .hangar-label{letter-spacing:.4em;font-size:11px;color:var(--amber);text-transform:uppercase;margin-bottom:10px}
   .hangar-left{width:250px;flex:none}
   .jet-circle{width:180px;height:180px;border:1px solid rgba(125,249,255,.28);border-radius:50%;
-    background:radial-gradient(circle,rgba(10,30,44,.25),rgba(4,12,20,.55));display:flex;flex-direction:column;
+    background:radial-gradient(circle,rgba(8,24,38,.78),rgba(4,12,20,.88));display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:5px;padding:18px;text-align:center;
-    box-shadow:0 0 34px rgba(0,140,255,.12) inset}
-  .jet-opt{width:100%;background:transparent;border:1px solid transparent;color:#9fc6d2;cursor:pointer;
+    box-shadow:0 0 34px rgba(0,140,255,.12) inset;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  .jet-opt{width:100%;background:rgba(6,18,28,.45);border:1px solid transparent;color:#c4e2ee;cursor:pointer;
     font-family:inherit;padding:5px 6px;letter-spacing:.12em;font-size:13px;text-transform:uppercase;border-radius:4px}
-  .jet-opt small{display:block;font-size:9.5px;letter-spacing:.16em;color:#5f8291;margin-top:2px;text-transform:uppercase}
+  .jet-opt small{display:block;font-size:9.5px;letter-spacing:.16em;color:#8fb4c2;margin-top:2px;text-transform:uppercase}
   .jet-opt:hover{color:#dff7ff}
   .jet-opt.sel{color:#fff;border-color:rgba(255,180,84,.55);background:rgba(255,180,84,.10)}
   .jet-opt.sel small{color:var(--amber)}
@@ -192,20 +192,15 @@
   body.touch #hud-bottom-left .barlabel{font-size:8px;letter-spacing:.14em}
   body.touch #hud-gauges{gap:6px;font-size:9px;flex-wrap:wrap;row-gap:1px}
   body.touch #hud-gauges b{font-size:10px}
-  body.touch #btn-pause{top:auto;bottom:162px;left:20px}
-  body.touch #btn-camera{top:auto;bottom:162px;left:118px;right:auto}
-  body.touch #btn-end-sortie{position:absolute;top:auto !important;bottom:200px;left:20px}
-  body.touch #radar-wrap{top:104px;bottom:auto;right:14px;width:92px;height:92px}
-  body.touch #radar{width:92px;height:92px}
+  body.touch #btn-pause{top:156px;bottom:auto;left:162px}
+  body.touch #btn-camera{top:156px;bottom:auto;left:272px;right:auto}
+  body.touch #btn-end-sortie{position:absolute;top:112px !important;bottom:auto;left:14px}
+  body.touch #radar-wrap{top:104px;bottom:auto;right:14px;width:80px;height:80px}
+  body.touch #radar{width:80px;height:80px}
   body.touch #radar-label{top:5px;right:0;left:0;text-align:center;font-size:8.5px}
-  @media(max-height:420px){
-    body.touch #radar-wrap{top:100px;width:80px;height:80px}
-    body.touch #radar{width:80px;height:80px}
-    body.touch #btn-missile{bottom:84px}
-  }
-  body.touch #btn-missile{right:56px;bottom:96px}
+  body.touch #btn-missile{top:192px;bottom:auto;right:16px}
   body.touch #btn-roll{right:98px;bottom:18px}
-  body.touch #btn-boost{right:18px;bottom:18px}
+  body.touch #btn-boost{right:170px;bottom:18px}
   body.touch #autofire-tag{display:none}
 </style>
 <script type="importmap">
@@ -1930,7 +1925,7 @@ function launchMode(mode) {
   SAVE.stats.sorties++;
   medalsBefore = new Set(earnedMedals().map(m => m.id));
   MISSION.objText = mode === 'free'
-    ? () => 'Free flight — no hostiles over the coast. Press M or ✕ END to return to the lobby.'
+    ? () => 'Free flight — no hostiles over the coast.'
     : () => `ENDLESS · Wave ${MISSION.wave} · Hostiles airborne: ${aliveEnemies()} · Best: Wave ${SAVE.bestEndless}`;
   player.hp = player.maxHp = Math.round((100 + up.armor * 35) * JETS[currentJetId].hullMul);
   player.missiles = 6 + up.weapon;
