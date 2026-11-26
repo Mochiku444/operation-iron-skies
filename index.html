@@ -55,8 +55,19 @@
   .upcard p{font-size:12px;color:#9fc6d2;line-height:1.5;margin:5px 0 9px}
   .pips{font-size:13px;color:var(--amber);letter-spacing:.2em}
   .center{text-align:center}
-  .hint-blink{text-align:center;margin-top:16px;color:#8fd8e8;font-size:12.5px;letter-spacing:.28em;text-transform:uppercase;animation:blinkHint 1.6s ease-in-out infinite}
   @keyframes blinkHint{0%,100%{opacity:.25}50%{opacity:1}}
+  .tap-start{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:26px}
+  .tap-ring{position:relative;width:44px;height:44px;border:1px solid rgba(125,249,255,.55);border-radius:50%}
+  .tap-ring i{position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px rgba(255,180,84,.9)}
+  .tap-ring span{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(125,249,255,.75);animation:tapPulse 2s ease-out infinite}
+  .tap-ring span.r2{animation-delay:1s}
+  @keyframes tapPulse{0%{transform:scale(.45);opacity:0}35%{opacity:.9}100%{transform:scale(1.3);opacity:0}}
+  .tap-line{display:flex;align-items:center;gap:12px}
+  .tap-text{color:#aee6f5;font-size:12.5px;letter-spacing:.3em;text-transform:uppercase;animation:blinkHint 1.6s ease-in-out infinite}
+  .tap-chev{color:var(--amber);font-size:15px;animation:chevR 1.6s ease-in-out infinite}
+  .tap-chev.flip{animation-name:chevL}
+  @keyframes chevR{0%,100%{transform:translateX(0);opacity:.4}50%{transform:translateX(3px);opacity:1}}
+  @keyframes chevL{0%,100%{transform:translateX(0);opacity:.4}50%{transform:translateX(-3px);opacity:1}}
   /* ---------- lobby ---------- */
   .lobby-wrap{position:relative;width:100%;max-width:880px;max-height:100%;overflow-y:auto}
   .lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
@@ -265,7 +276,10 @@
   </div>
   <div class="callsign">⚠ INCOMING TRANSMISSION — VARKOVIA FEDERATION AIRSPACE VIOLATION CONFIRMED</div>
   <button class="btn" id="btn-start">Pilot, Start Your Engines — Operation Iron Skies</button>
-  <p class="hint-blink">click anywhere to start</p>
+  <div class="tap-start" aria-hidden="true">
+    <div class="tap-ring"><span></span><span class="r2"></span><i></i></div>
+    <div class="tap-line"><span class="tap-chev">»</span><span class="tap-text">Click anywhere to start</span><span class="tap-chev flip">«</span></div>
+  </div>
   <div class="controls-note">
     <b>PC:</b> W/S or ↑/↓ pitch · A/D or ←/→ bank · <b>SPACE</b> fire cannon · <b>F</b> missile · <b>Q/E</b> barrel roll · <b>SHIFT</b> afterburner · <b>C</b> camera · <b>P</b> pause<br>
     <b>Mobile:</b> virtual joystick to fly · cannon auto-fires at targets ahead · tap MISSILE / ROLL / BOOST
