@@ -19,9 +19,33 @@ An internet connection is needed once, to load Three.js from the CDN. Everything
 ## Lobby — Hangar
 
 After the opening narration you land in the **Squadron 07 hangar lobby**: your pilot card
-(callsign, reputation rank, score, credits, kills), the mission board (missions unlock as
-you clear them, cleared ones can be replayed), and the armory/workshop where credits buy
-upgrades. Pick a mission → briefing → launch. Debrief returns you to the lobby.
+(callsign, reputation rank, score, credits, kills), **aircraft selection**, the mission board
+(missions unlock as you clear them, cleared ones can be replayed), and the armory/workshop
+where credits buy upgrades. Pick a mission → briefing → launch. Debrief returns you to the lobby.
+
+**Progress is saved automatically** in your browser (localStorage): rank, credits, upgrades,
+unlocked missions, chosen aircraft and your best Endless wave survive a page refresh.
+A two-click Reset Progress button in the lobby wipes it.
+
+### Aircraft
+
+| Jet | Character | Trade-off |
+|---|---|---|
+| **F/A-07 PHANTOM** | Balanced interceptor | Even speed, hull and firepower |
+| **XF-09 VIPER** | Fast strike | +28% speed, stronger guns, fragile hull (×0.72) |
+| **A-12 JUGGERNAUT** | Heavy gunship | Hull ×1.65 and hardest hits, −16% speed |
+
+### Free modes
+
+- **FREE FLIGHT** — no hostiles; explore the coast, end the sortie any time with `M` or the ✕ END button
+- **ENDLESS** — wave defense over the airbase: waves grow, every cleared wave restocks +2 missiles and repairs hull; your best wave is recorded
+
+### Buildings & world dressing
+
+Beyond the campaign set-pieces, the theatres are populated with procedural window-lit
+buildings (with collision): the airbase HQ/barracks and depot blocks, a riverside village
+and farmstead in the valley, a supply outpost in the frozen north, and a full port town
+with a lighthouse on the Asteria coast in the Black Sea mission.
 
 ## Campaign — 6 missions
 
@@ -52,6 +76,7 @@ upgrades. Pick a mission → briefing → launch. Debrief returns you to the lob
 | Barrel roll (dodges fire) | `Q` / `E` | ROLL button |
 | Afterburner | `SHIFT` | BOOST button |
 | Camera chase/cockpit | `C` | CAM button |
+| End sortie (free modes) | `M` | ✕ END button |
 | Pause | `P` | II button |
 
 ## Tech notes
