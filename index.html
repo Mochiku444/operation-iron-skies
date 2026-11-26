@@ -85,18 +85,7 @@
   .hangar-head{text-align:center;pointer-events:none}
   .hangar-head .title{font-size:clamp(24px,4vw,33px);margin:2px 0 0}
   .hangar-mid{flex:1 0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;min-height:0;padding:6px 0 2px}
-  .hangar-label{letter-spacing:.4em;font-size:11px;color:var(--amber);text-transform:uppercase;margin-bottom:10px}
   .hangar-left{width:250px;flex:none}
-  .jet-circle{width:180px;height:180px;border:1px solid rgba(125,249,255,.28);border-radius:50%;
-    background:radial-gradient(circle,rgba(8,24,38,.78),rgba(4,12,20,.88));display:flex;flex-direction:column;
-    align-items:center;justify-content:center;gap:5px;padding:18px;text-align:center;
-    box-shadow:0 0 34px rgba(0,140,255,.12) inset;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
-  .jet-opt{width:100%;background:rgba(6,18,28,.45);border:1px solid transparent;color:#c4e2ee;cursor:pointer;
-    font-family:inherit;padding:5px 6px;letter-spacing:.12em;font-size:13px;text-transform:uppercase;border-radius:4px}
-  .jet-opt small{display:block;font-size:9.5px;letter-spacing:.16em;color:#8fb4c2;margin-top:2px;text-transform:uppercase}
-  .jet-opt:hover{color:#dff7ff}
-  .jet-opt.sel{color:#fff;border-color:rgba(255,180,84,.55);background:rgba(255,180,84,.10)}
-  .jet-opt.sel small{color:var(--amber)}
   .pilot-mini{margin-top:12px;border:1px solid var(--line);background:rgba(6,18,28,.72);padding:10px 14px;text-align:left}
   .pilot-mini .pilot-stats{font-size:13px;margin-top:6px;gap:4px 18px}
   .hangar-right{width:330px;flex:none}
@@ -120,7 +109,6 @@
   @media(max-width:820px){
     .hangar-mid{flex-direction:column;align-items:stretch;min-height:0}
     .hangar-left,.hangar-right{width:100%}
-    .jet-circle{margin:0 auto}
   }
 
   /* ---------- HUD ---------- */
@@ -285,9 +273,7 @@
     </div>
     <div class="hangar-mid">
       <div class="hangar-left">
-        <div class="hangar-label">Select Aircraft</div>
-        <div class="jet-circle" id="lobby-jets"></div>
-        <div class="pilot-mini">
+        <div class="pilot-mini" style="margin-top:0">
           <div class="kicker" style="letter-spacing:.22em">Pilot — “Phantom”</div>
           <div class="pilot-stats">
             <span>Reputation</span><b id="lobby-rank">ROOKIE</b>
@@ -306,6 +292,7 @@
           <div class="pips" id="jet-info-pips"></div>
           <p id="jet-info-desc"></p>
         </div>
+        <button id="btn-open-jets" class="btn ghost" style="width:100%;margin-top:10px;padding:10px">✈ Change Aircraft</button>
         <div class="hangar-actions">
           <button id="btn-drawer-armory">⚙ Armory & Workshop</button>
           <button id="btn-drawer-record">🎖 Service Record</button>
@@ -330,6 +317,16 @@
     <p class="obj" style="margin:8px 0 4px">Choose your sortie. Locked missions open as you clear the campaign.</p>
     <div id="lobby-missions"></div>
     <div class="center"><button class="btn ghost" id="btn-missions-back">← Back to Hangar</button></div>
+  </div>
+</div>
+
+<!-- ================= SELECT AIRCRAFT ================= -->
+<div id="screen-jets" class="screen hidden">
+  <div class="panel">
+    <div class="kicker">Hangar — Squadron 07</div>
+    <h2>SELECT AIRCRAFT</h2>
+    <div id="jets-list" style="margin-top:10px"></div>
+    <div class="center"><button class="btn ghost" id="btn-jets-back">← Back to Hangar</button></div>
   </div>
 </div>
 
@@ -1823,6 +1820,12 @@ function startHangar() {
   };
   requestAnimationFrame(step);
 }
+function showJets() {
+  state = 'jets';
+  showScreen('screen-jets');
+}
+el('btn-open-jets').addEventListener('click', showJets);
+el('btn-jets-back').addEventListener('click', () => showLobby());
 function showArmory() {
   el('armory-credits').textContent = SAVE.credits + ' CR';
   el('armory-aircraft').textContent = JETS[SAVE.jet].name;
@@ -1842,7 +1845,7 @@ el('btn-record-back').addEventListener('click', () => showLobby());
 // 8. FLOW — screens, launch, debrief, upgrades
 // ================================================================
 function showScreen(id) {
-  for (const s of ['screen-start', 'screen-lobby', 'screen-missions', 'screen-armory', 'screen-record', 'screen-brief', 'screen-debrief', 'screen-end']) el(s).classList.add('hidden');
+  for (const s of ['screen-start', 'screen-lobby', 'screen-missions', 'screen-jets', 'screen-armory', 'screen-record', 'screen-brief', 'screen-debrief', 'screen-end']) el(s).classList.add('hidden');
   if (id) el(id).classList.remove('hidden');
   el('hud').classList.toggle('hidden', id !== null);
   el('touch').classList.toggle('hidden', !(id === null && IS_TOUCH));
@@ -2074,13 +2077,14 @@ function showLobby(keepScroll) {
   el('lobby-kills').textContent = SAVE.kills;
   el('lobby-aircraft').textContent = JETS[SAVE.jet].name;
   el('lobby-best-endless').textContent = 'WAVE ' + SAVE.bestEndless;
-  const jetsEl = el('lobby-jets');
+  const jetsEl = el('jets-list');
   jetsEl.innerHTML = '';
+  const dots = (v) => { const n = Math.max(1, Math.min(5, Math.round(v))); return '●'.repeat(n) + '○'.repeat(5 - n); };
   for (const [id, j] of Object.entries(JETS)) {
     const b = document.createElement('button');
-    b.className = 'jet-opt' + (id === SAVE.jet ? ' sel' : '');
-    b.innerHTML = `${j.name}<small>${j.role}</small>`;
-    b.addEventListener('click', () => { SAVE.jet = id; setPlayerJet(id); saveGame(); SoundFX.lockBeep(); showLobby(true); });
+    b.className = 'mission-btn' + (id === SAVE.jet ? ' sel' : '');
+    b.innerHTML = `<span>${j.name}<small>${j.role} · SPD ${dots(j.speedMul * 4)} · HULL ${dots(j.hullMul * 3)} · PWR ${dots(j.dmgMul * 4)}</small><small>${j.desc || ''}</small></span><b>${id === SAVE.jet ? '▶' : ''}</b>`;
+    b.addEventListener('click', () => { SAVE.jet = id; setPlayerJet(id); saveGame(); SoundFX.lockBeep(); showLobby(); });
     jetsEl.appendChild(b);
   }
   updateJetInfo();
