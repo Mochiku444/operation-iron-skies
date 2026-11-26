@@ -182,8 +182,7 @@
   body.touch #hud-gauges b{font-size:10px}
   body.touch #btn-pause{top:85px;bottom:auto;left:12px}
   body.touch #btn-camera{top:85px;bottom:auto;left:88px;right:auto}
-  body.touch #btn-end-sortie{position:absolute;top:85px !important;bottom:auto;left:182px}
-  body.touch #btn-pause,body.touch #btn-camera,body.touch #btn-end-sortie{font-size:10.5px;padding:5px 8px;letter-spacing:.08em;background:rgba(6,18,28,.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  body.touch #btn-pause,body.touch #btn-camera{font-size:10.5px;padding:5px 8px;letter-spacing:.08em;background:rgba(6,18,28,.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
   body.touch #radar-wrap{top:90px;bottom:auto;right:12px;width:104px;height:104px}
   body.touch #radar{width:104px;height:104px}
   body.touch #radar-label{top:6px;right:0;left:0;text-align:center;font-size:10px}
@@ -221,7 +220,6 @@
     <div id="hud-credits">⬡ 0 CR</div>
   </div>
   <button id="btn-pause" class="hudbtn">II Pause</button>
-  <button id="btn-end-sortie" class="hudbtn hidden" style="top:156px">✕ End Sortie</button>
   <button id="btn-camera" class="hudbtn">Cam: Chase</button>
   <div id="hud-bottom-left" class="hudbox">
     <div class="barlabel"><span>HULL INTEGRITY</span><span id="hull-num">100%</span></div>
@@ -240,7 +238,7 @@
   <div id="lockbox"><div class="lk">◈ LOCKED — FIRE MISSILE</div></div>
   <div id="lockprog"></div>
   <div id="hitmarker">✕</div>
-  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div></div>
+  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><button id="btn-end-pause" class="btn ghost small hidden" style="margin-top:16px">✕ End Sortie</button></div>
   <div id="warning" class="hidden">⚠ WARNING ⚠</div>
 </div>
 
@@ -1916,7 +1914,7 @@ function launchMission(i) {
   if (wingman.active) wingman.group.position.copy(player.group.position).add(new THREE.Vector3(-30, 5, 34));
   MISSIONS[i].setup();
   el('hud-mission').textContent = MISSIONS[i].name;
-  el('btn-end-sortie').classList.add('hidden');
+  el('btn-end-pause').classList.add('hidden');
   state = 'flying';
   showScreen(null);
   updateHudTop();
@@ -1956,7 +1954,7 @@ function launchMode(mode) {
   if (wingman.active && !wingman.group.parent) scene.add(wingman.group);
   if (wingman.active) wingman.group.position.copy(player.group.position).add(new THREE.Vector3(-30, 5, 34));
   el('hud-mission').textContent = MISSION.name;
-  el('btn-end-sortie').classList.remove('hidden');
+  el('btn-end-pause').classList.remove('hidden');
   state = 'flying';
   showScreen(null);
   updateHudTop();
@@ -2286,7 +2284,7 @@ function togglePause() {
 el('btn-camera').addEventListener('click', toggleCamera);
 el('btn-pause').addEventListener('click', togglePause);
 el('banner').addEventListener('click', () => { if (paused) togglePause(); });
-el('btn-end-sortie').addEventListener('click', endSortie);
+el('btn-end-pause').addEventListener('click', (e) => { e.stopPropagation(); endSortie(); });
 // touch joystick
 const stickBase = el('stick-base'), stickKnob = el('stick-knob');
 let stickId = null;
