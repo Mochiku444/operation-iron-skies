@@ -167,7 +167,11 @@
   #lockprog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:var(--amber);letter-spacing:.2em;text-shadow:0 0 8px #000}
   #banner{position:absolute;left:50%;top:19%;transform:translateX(-50%);text-align:center;width:100%}
   .qbtn.qactive{border-color:var(--amber);color:var(--amber)}
-  body.touch #banner .btn{min-height:44px}
+  #banner-controls{display:inline-block;margin-top:14px;padding:10px 12px;background:rgba(4,12,20,.78);border:1px solid var(--line);backdrop-filter:blur(3px)}
+  #banner-controls .btn{font-size:11.5px;padding:7px 12px;letter-spacing:.1em;margin:2px}
+  .banner-qrow{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .banner-qrow span{font-size:10px;letter-spacing:.18em;color:#8fb7c4;margin-right:2px}
+  body.touch #banner-controls .btn{min-height:44px}
   #banner-main{font-size:clamp(20px,5vw,34px);font-weight:700;letter-spacing:.22em;color:#fff;text-shadow:0 0 18px rgba(255,180,84,.7)}
   #banner-sub{font-size:clamp(11px,2.6vw,14px);letter-spacing:.3em;color:var(--amber);margin-top:5px}
   #warning{position:absolute;left:50%;top:64%;transform:translateX(-50%);font-size:14px;letter-spacing:.3em;color:var(--red);
@@ -272,7 +276,7 @@
   <div id="lockbox"><div class="lk">◈ LOCKED — FIRE MISSILE</div></div>
   <div id="lockprog"></div>
   <div id="hitmarker">✕</div>
-  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><button id="btn-end-pause" class="btn ghost small hidden" style="margin-top:16px">✕ End Sortie</button><br><button id="btn-fs-pause" class="btn ghost small" style="margin-top:10px">⛶ Fullscreen</button><div style="margin-top:14px;display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap"><span style="font-size:10px;letter-spacing:.18em;color:#8fb7c4">GRAPHICS</span><button class="btn ghost small qbtn" data-q="low">LOW</button><button class="btn ghost small qbtn" data-q="med">MED</button><button class="btn ghost small qbtn" data-q="high">HIGH</button><button id="btn-mute" class="btn ghost small">🔊 SOUND ON</button></div></div>
+  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><div id="banner-controls" class="hidden"><button id="btn-end-pause" class="btn ghost small hidden">✕ End Sortie</button><button id="btn-fs-pause" class="btn ghost small">⛶ Fullscreen</button><div class="banner-qrow"><span>GRAPHICS</span><button class="btn ghost small qbtn" data-q="low">LOW</button><button class="btn ghost small qbtn" data-q="med">MED</button><button class="btn ghost small qbtn" data-q="high">HIGH</button><button id="btn-mute" class="btn ghost small mutebtn">🔊 SOUND ON</button></div></div></div>
   <div id="warning" class="hidden">⚠ WARNING ⚠</div>
 </div>
 
@@ -343,6 +347,7 @@
         <div class="hangar-actions">
           <button id="btn-drawer-armory">⚙ Armory & Workshop</button>
           <button id="btn-drawer-record">🎖 Service Record</button>
+          <button id="btn-open-settings">🎛 Settings</button>
         </div>
       </div>
     </div>
@@ -401,6 +406,19 @@
     <div class="kicker" style="margin-top:18px">Medals <span id="lobby-medal-count"></span></div>
     <div id="lobby-medals"></div>
     <div class="center"><button class="btn ghost" id="btn-record-back">← Back to Hangar</button></div>
+  </div>
+</div>
+
+<!-- ================= SETTINGS ================= -->
+<div id="screen-settings" class="screen hidden">
+  <div class="panel">
+    <div class="kicker">Settings</div>
+    <h2>SETTINGS</h2>
+    <div class="rowline"><span>Graphics quality</span><span><button class="btn ghost small qbtn" data-q="low">LOW</button> <button class="btn ghost small qbtn" data-q="med">MED</button> <button class="btn ghost small qbtn" data-q="high">HIGH</button></span></div>
+    <div class="rowline"><span>Sound</span><button id="btn-mute-2" class="btn ghost small mutebtn">🔊 SOUND ON</button></div>
+    <div class="rowline"><span>Display</span><button id="btn-fs-settings" class="btn ghost small">⛶ FULLSCREEN</button></div>
+    <p class="obj" style="margin-top:10px">LOW suits older phones: lower resolution, fewer particles, no sun glow or god rays. HIGH is full quality. Changes apply instantly, are remembered, and can also be changed mid-flight from the pause menu.</p>
+    <div class="center"><button class="btn ghost" id="btn-settings-back">← Back to Hangar</button></div>
   </div>
 </div>
 
@@ -1082,6 +1100,7 @@ function envCity(g) { // M4 — blackout capital, fires and smoke
     if ((gx + gz) % 3 === 0 && Math.random() < 0.35) continue;             // streets
     const x = gx * 300 + rand(-36, 36), z = gz * 300 + rand(-36, 36);
     if (Math.hypot(x, z) < 260) continue;                                   // plaza at centre
+    if (Math.abs(x) < 110 && z > -350) continue;                            // clear entry lane from the spawn point
     const w = rand(52, 92), d = rand(52, 92), h = rand(80, 380);
     blocks.push({ x, z, w, d, h });
   }
@@ -1755,6 +1774,14 @@ function damagePlayer(dmg) {
     setTimeout(() => endMission(false), 1400);
   }
 }
+// Crashing into terrain or a solid object is fatal — no scrape, no bounce.
+// Bypasses invulnerability and barrel-roll dodges: a mountain does not miss.
+function crashPlayer() {
+  if (!player.alive || state !== 'flying') return;
+  player.invuln = 0; player.rollT = 0;
+  showBanner('CRASHED', 'TERRAIN IMPACT', 1300);
+  damagePlayer(player.hp + 1);
+}
 function hitmark() {
   const h = el('hitmarker');
   h.style.opacity = 1; h.style.transform = 'translate(-50%,-50%) scale(1.25)';
@@ -1765,6 +1792,7 @@ let bannerTimer = null;
 function showBanner(main, sub, dur = 2200) {
   el('banner-main').textContent = main;
   el('banner-sub').textContent = sub || '';
+  el('banner-controls').classList.add('hidden');
   el('banner').classList.remove('hidden');
   clearTimeout(bannerTimer);
   bannerTimer = setTimeout(() => el('banner').classList.add('hidden'), dur);
@@ -1812,18 +1840,20 @@ function updatePlayer(dt) {
   const fwd = playerForward().clone();
   player.group.position.addScaledVector(fwd, player.speed * dt);
   const pos = player.group.position;
-  // --- world limits
+  // --- world limits & fatal terrain collision
+  // On the takeoff roll the jet is guided up gently; once it has genuinely
+  // been airborne (30+ above the ground), touching the ground is a crash.
   const gy = ENV.groundY(pos.x, pos.z);
-  if (pos.y < gy + 5) { pos.y = gy + 5; player.pitch = Math.max(player.pitch, 0.3); damagePlayer(9); player.invuln = Math.max(player.invuln, 0.7); }
+  if (pos.y > gy + 30) player.airborne = true;
+  if (pos.y < gy + 5) {
+    pos.y = gy + 5;
+    if (player.airborne) crashPlayer();
+    else { player.pitch = Math.max(player.pitch, 0.3); damagePlayer(9); player.invuln = Math.max(player.invuln, 0.7); }
+  }
   if (pos.y > 1500) pos.y = 1500;
   for (const c of ENV.colliders) {
     const dx = pos.x - c.x, dz = pos.z - c.z;
-    if (dx * dx + dz * dz < c.r * c.r && pos.y < c.h + 4) {
-      damagePlayer(12);
-      const d = Math.max(1, Math.hypot(dx, dz));
-      pos.x = c.x + dx / d * (c.r + 6); pos.z = c.z + dz / d * (c.r + 6);
-      player.invuln = Math.max(player.invuln, 0.8);
-    }
+    if (dx * dx + dz * dz < c.r * c.r && pos.y < c.h + 4) { crashPlayer(); break; }
   }
   const rr = Math.hypot(pos.x, pos.z);
   el('warning').classList.toggle('hidden', !(rr > WORLD_R && state === 'flying'));
@@ -2039,8 +2069,15 @@ function showRecord() {
   state = 'record';
   showScreen('screen-record');
 }
+function showSettings() {
+  state = 'settings';
+  showScreen('screen-settings');
+}
 el('btn-drawer-armory').addEventListener('click', showArmory);
 el('btn-drawer-record').addEventListener('click', showRecord);
+el('btn-open-settings').addEventListener('click', showSettings);
+el('btn-settings-back').addEventListener('click', () => showLobby());
+el('btn-fs-settings').addEventListener('click', () => toggleFullscreen());
 el('btn-armory-back').addEventListener('click', () => showLobby());
 el('btn-record-back').addEventListener('click', () => showLobby());
 
@@ -2048,7 +2085,7 @@ el('btn-record-back').addEventListener('click', () => showLobby());
 // 8. FLOW — screens, launch, debrief, upgrades
 // ================================================================
 function showScreen(id) {
-  for (const s of ['screen-start', 'screen-lobby', 'screen-missions', 'screen-jets', 'screen-armory', 'screen-record', 'screen-brief', 'screen-debrief', 'screen-end']) el(s).classList.add('hidden');
+  for (const s of ['screen-start', 'screen-lobby', 'screen-missions', 'screen-jets', 'screen-armory', 'screen-record', 'screen-settings', 'screen-brief', 'screen-debrief', 'screen-end']) el(s).classList.add('hidden');
   if (id) el(id).classList.remove('hidden');
   el('hud').classList.toggle('hidden', id !== null);
   el('touch').classList.toggle('hidden', !(id === null && IS_TOUCH));
@@ -2094,7 +2131,7 @@ function launchMission(i) {
   player.hp = player.maxHp = Math.round((100 + up.armor * 35) * JETS[currentJetId].hullMul);
   player.missiles = 6 + up.weapon;
   player.boost = 1; player.speed = 120; player.alive = true;
-  player.yaw = 0; player.pitch = 0; player.bank = 0; player.rollT = 0; player.invuln = 0;
+  player.yaw = 0; player.pitch = 0; player.bank = 0; player.rollT = 0; player.invuln = 0; player.airborne = false;
   player.group.position.set(0, i === 5 ? 480 : 150, 1000);
   player.group.visible = true;
   if (!player.group.parent) scene.add(player.group);
@@ -2136,7 +2173,7 @@ function launchMode(mode) {
   player.hp = player.maxHp = Math.round((100 + up.armor * 35) * JETS[currentJetId].hullMul);
   player.missiles = 6 + up.weapon;
   player.boost = 1; player.speed = 120; player.alive = true;
-  player.yaw = 0; player.pitch = 0; player.bank = 0; player.rollT = 0; player.invuln = 0;
+  player.yaw = 0; player.pitch = 0; player.bank = 0; player.rollT = 0; player.invuln = 0; player.airborne = false;
   player.group.position.set(0, 150, 1000);
   player.group.visible = true;
   if (!player.group.parent) scene.add(player.group);
@@ -2472,6 +2509,7 @@ function togglePause() {
   if (state !== 'flying' && !paused) return;
   paused = !paused;
   showBanner(paused ? 'PAUSED' : 'RESUMED', paused ? (IS_TOUCH ? 'TAP TO RESUME' : 'PRESS P TO RESUME') : '', paused ? 999999 : 800);
+  el('banner-controls').classList.toggle('hidden', !paused);
   el('banner').style.pointerEvents = paused ? 'auto' : 'none';
   if (!paused) el('banner').classList.add('hidden');
 }
@@ -2486,15 +2524,14 @@ function toggleFullscreen() {
 el('btn-fs-pause').addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
 document.querySelectorAll('.qbtn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); applyQuality(b.dataset.q); }));
 document.querySelectorAll('.qbtn').forEach(b => b.classList.toggle('qactive', b.dataset.q === qualityName));
-const muteBtn = el('btn-mute');
-function renderMute() { muteBtn.textContent = muted ? '🔇 SOUND OFF' : '🔊 SOUND ON'; }
-muteBtn.addEventListener('click', e => {
-  e.stopPropagation();
+function renderMute() { document.querySelectorAll('.mutebtn').forEach(b => b.textContent = muted ? '🔇 SOUND OFF' : '🔊 SOUND ON'); }
+function toggleMute() {
   muted = !muted;
   masterGain.gain.value = muted ? 0 : 1;
   try { localStorage.setItem('ironSkiesMuted', muted ? '1' : '0'); } catch (err) {}
   renderMute();
-});
+}
+document.querySelectorAll('.mutebtn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); toggleMute(); }));
 renderMute();
 el('btn-fs-start').addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
 // touch joystick
