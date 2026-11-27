@@ -925,10 +925,10 @@ function fireGlow(x, y, z, s = 1) {
   return g;
 }
 
-const ENV = { group: null, colliders: [], update: null, groundY: () => 0 };
+const ENV = { group: null, colliders: [], update: null, groundY: () => 0, cullChunks: [] };
 function clearEnvironment() {
   if (ENV.group) { scene.remove(ENV.group); ENV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
-  ENV.group = new THREE.Group(); ENV.colliders = []; ENV.update = null; ENV.groundY = () => 0;
+  ENV.group = new THREE.Group(); ENV.colliders = []; ENV.update = null; ENV.groundY = () => 0; ENV.cullChunks = [];
   scene.add(ENV.group);
 }
 
@@ -975,6 +975,44 @@ function mountainRing(g, { count = 16, rMin = 3000, rMax = 4600, hMin = 380, hMa
     foot.position.set(Math.sin(fa) * fd, fh / 2 - 6, Math.cos(fa) * fd); g.add(foot);
   }
 }
+// ---- view culling ---------------------------------------------------------
+// Ordinary meshes are frustum-culled by the renderer automatically, but one
+// big InstancedMesh can never be culled (its bounds span the whole map).
+// So scattered props are built as per-sector InstancedMesh chunks: sectors
+// outside the camera frustum are skipped by the renderer, and updateCullChunks
+// also switches off sectors beyond the fog, where nothing is visible anyway.
+const _flatEuler = new THREE.Euler(-Math.PI / 2, 0, 0);
+function instancedChunks(g, geo, mat, items, sector = 2000) {
+  const byKey = new Map();
+  for (const it of items) {
+    const k = Math.floor(it.x / sector) + ':' + Math.floor(it.z / sector);
+    if (!byKey.has(k)) byKey.set(k, []);
+    byKey.get(k).push(it);
+  }
+  const M4 = new THREE.Matrix4(), QI = new THREE.Quaternion(), PV = new THREE.Vector3(), SV = new THREE.Vector3();
+  for (const list of byKey.values()) {
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    let cx = 0, cz = 0;
+    list.forEach((it, i) => {
+      PV.set(it.x, it.y, it.z); SV.set(it.s, it.s, it.s);
+      if (it.flat) QI.setFromEuler(_flatEuler); else QI.identity();
+      M4.compose(PV, QI, SV); im.setMatrixAt(i, M4);
+      cx += it.x; cz += it.z;
+    });
+    im.userData.cx = cx / list.length; im.userData.cz = cz / list.length;
+    g.add(im); ENV.cullChunks.push(im);
+  }
+}
+function updateCullChunks() {
+  if (!ENV.cullChunks.length) return;
+  const far = (scene.fog ? scene.fog.far : 9000) + 1500;
+  const cp = camera.position;
+  for (const m of ENV.cullChunks) {
+    const dx = m.userData.cx - cp.x, dz = m.userData.cz - cp.z;
+    m.visible = dx * dx + dz * dz < far * far;
+  }
+}
+
 // ---- M1 coastal archipelago terrain --------------------------------------
 // One analytic height function drives BOTH the terrain mesh and ENV.groundY,
 // so what you see is exactly what you can crash into — at every graphics
@@ -1047,21 +1085,17 @@ function buildM1Terrain(g) {
   water.rotation.x = -Math.PI / 2; water.position.y = 0;
   g.add(water);
   const foamN = Math.round(380 * qFactor());
-  const foam = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 10),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }), foamN);
-  const M4 = new THREE.Matrix4(), Q4 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), S4 = new THREE.Vector3(), P4 = new THREE.Vector3();
-  let placed = 0, guard = 0;
-  while (placed < foamN && guard++ < foamN * 30) {
+  const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false });
+  const foamItems = [];
+  let guard = 0;
+  while (foamItems.length < foamN && guard++ < foamN * 30) {
     const x = rand(-4600, 4600), z = rand(-4600, 4600);
     if (Math.abs(m1Height(x, z)) > 1.3) continue;
     if (Math.hypot(x / 700, z / 1050) < 1.35) continue;   // no foam on the airbase plateau
-    const s = rand(6, 17);
-    P4.set(x, 0.18, z); S4.set(s, s, 1);
-    M4.compose(P4, Q4, S4); foam.setMatrixAt(placed++, M4);
+    foamItems.push({ x, y: 0.18, z, s: rand(6, 17), flat: true });
   }
-  while (placed < foamN) { M4.makeScale(0, 0, 0); foam.setMatrixAt(placed++, M4); }
-  g.add(foam);
-  return (dt, t) => { streakTex.offset.set(t * 0.008, t * 0.005); foam.material.opacity = 0.42 + 0.16 * Math.sin(t * 0.8); };
+  instancedChunks(g, new THREE.CircleGeometry(1, 10), foamMat, foamItems, 1600);
+  return (dt, t) => { streakTex.offset.set(t * 0.008, t * 0.005); foamMat.opacity = 0.42 + 0.16 * Math.sin(t * 0.8); };
 }
 
 function envAirbase(g) { // M1 — sunset coastal archipelago, burning base
@@ -1085,11 +1119,9 @@ function envAirbase(g) { // M1 — sunset coastal archipelago, burning base
   mountainRing(g, { rMin: 3400 });
   const trunkG = new THREE.CylinderGeometry(1.1, 1.4, 7, 5), leafG = new THREE.ConeGeometry(5.5, 13, 6);
   const treeN = Math.round(850 * qFactor());
-  const trees = new THREE.InstancedMesh(leafG, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), treeN);
-  const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), treeN);
-  const M4 = new THREE.Matrix4(), QI = new THREE.Quaternion(), SV = new THREE.Vector3(), PV = new THREE.Vector3();
-  let placedT = 0, guardT = 0;
-  while (placedT < treeN && guardT++ < treeN * 40) {
+  const leafItems = [], trunkItems = [];
+  let guardT = 0;
+  while (leafItems.length < treeN && guardT++ < treeN * 40) {
     const x = rand(-4300, 4300), z = rand(-4300, 4300), h = m1Height(x, z);
     if (h < 4.5 || h > 135) continue;                                            // no trees in water, river or on beaches
     if (Math.hypot(x / 700, z / 1050) < 1.35) continue;                          // keep the airbase clear
@@ -1097,12 +1129,11 @@ function envAirbase(g) { // M1 — sunset coastal archipelago, burning base
     const slope = Math.abs(m1Height(x + 14, z) - h) + Math.abs(m1Height(x, z + 14) - h);
     if (slope > 15) continue;                                                    // not on terrace cliffs
     const s = rand(0.8, 1.6);
-    PV.set(x, h + 10 * s, z); SV.set(s, s, s); M4.compose(PV, QI, SV); trees.setMatrixAt(placedT, M4);
-    PV.set(x, h + 3.2 * s, z); M4.compose(PV, QI, SV); trunks.setMatrixAt(placedT, M4);
-    placedT++;
+    leafItems.push({ x, y: h + 10 * s, z, s });
+    trunkItems.push({ x, y: h + 3.2 * s, z, s });
   }
-  while (placedT < treeN) { M4.makeScale(0, 0, 0); trees.setMatrixAt(placedT, M4); trunks.setMatrixAt(placedT, M4); placedT++; }
-  g.add(trees, trunks);
+  instancedChunks(g, leafG, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), leafItems);
+  instancedChunks(g, trunkG, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), trunkItems);
   const fires = [];
   for (let i = 0; i < 9; i++) { const f = fireGlow(rand(-320, 320), 0, rand(-700, 700), rand(0.8, 1.7)); g.add(f); fires.push(f); }
   addClouds(g, 30, 620, 3600, 0xffffff, [260, 560]);
@@ -1123,17 +1154,15 @@ function envValley(g) { // M2 — green valley, river, convoy road
     ENV.colliders.push({ x: hx, z: hz, r: r * 0.8, h });
   }
   const trunk = new THREE.CylinderGeometry(1.1, 1.4, 7, 5), leaf = new THREE.ConeGeometry(5.5, 13, 6);
-  const trees = new THREE.InstancedMesh(leaf, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), 240);
-  const trunks = new THREE.InstancedMesh(trunk, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), 240);
-  const M4 = new THREE.Matrix4();
+  const leafItems = [], trunkItems = [];
   for (let i = 0; i < 240; i++) {
     const x = rand(-2800, 2800), z = rand(-3400, 3400);
-    if (Math.abs(x - 260) < 60 || Math.abs(x + 620) < 150) { M4.makeScale(0, 0, 0); }
-    else M4.makeTranslation(x, 12, z);
-    trees.setMatrixAt(i, M4);
-    M4.makeTranslation(x, 3.5, z); trunks.setMatrixAt(i, M4);
+    if (Math.abs(x - 260) < 60 || Math.abs(x + 620) < 150) continue;
+    leafItems.push({ x, y: 12, z, s: 1 });
+    trunkItems.push({ x, y: 3.5, z, s: 1 });
   }
-  g.add(trees, trunks);
+  instancedChunks(g, leaf, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), leafItems);
+  instancedChunks(g, trunk, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), trunkItems);
   buildingCluster(g, 640, -640, 22, { w: [22, 46], h: [16, 58], d: [22, 46], spread: 175, lit: 0.55 }); // riverside town — tall blocks
   buildingCluster(g, -280, 1500, 8, { w: [18, 34], h: [9, 20], d: [18, 34], spread: 120, lit: 0.5 });  // farmstead
   mountainRing(g, { count: 14 });
@@ -2734,6 +2763,7 @@ function frame(now) {
   elapsed += dt;
   if (!paused) {
     if (ENV.update) ENV.update(dt, elapsed, player.group.position);
+    updateCullChunks();
     sunFx.group.visible = Q.fx && sunFx.base > 0.01;
     if (sunFx.group.visible) for (const sh of sunFx.shafts) sh.mat.opacity = sunFx.base * 0.16 * (0.75 + 0.25 * Math.sin(elapsed * 0.6 + sh.ph));
     sparks.update(dt); smoke.update(dt);
