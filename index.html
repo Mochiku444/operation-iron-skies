@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>OPERATION: IRON SKIES — Squadron 07</title>
 <style>
   :root{
@@ -10,7 +10,7 @@
     --panel:rgba(6,18,28,.82); --line:rgba(125,249,255,.35);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",Arial,Helvetica,sans-serif;color:#dff7ff}
+  html,body{width:100%;height:100%;height:100dvh;overflow:hidden;background:#000;font-family:"Segoe UI",Arial,Helvetica,sans-serif;color:#dff7ff}
   #game{position:fixed;inset:0}
   canvas{display:block}
   .hidden{display:none !important}
@@ -166,6 +166,8 @@
   #lockbox .lk{position:absolute;left:50%;top:100%;transform:translateX(-50%);font-size:10px;color:var(--red);letter-spacing:.15em;white-space:nowrap}
   #lockprog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:var(--amber);letter-spacing:.2em;text-shadow:0 0 8px #000}
   #banner{position:absolute;left:50%;top:19%;transform:translateX(-50%);text-align:center;width:100%}
+  .qbtn.qactive{border-color:var(--amber);color:var(--amber)}
+  body.touch #banner .btn{min-height:44px}
   #banner-main{font-size:clamp(20px,5vw,34px);font-weight:700;letter-spacing:.22em;color:#fff;text-shadow:0 0 18px rgba(255,180,84,.7)}
   #banner-sub{font-size:clamp(11px,2.6vw,14px);letter-spacing:.3em;color:var(--amber);margin-top:5px}
   #warning{position:absolute;left:50%;top:64%;transform:translateX(-50%);font-size:14px;letter-spacing:.3em;color:var(--red);
@@ -270,7 +272,7 @@
   <div id="lockbox"><div class="lk">◈ LOCKED — FIRE MISSILE</div></div>
   <div id="lockprog"></div>
   <div id="hitmarker">✕</div>
-  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><button id="btn-end-pause" class="btn ghost small hidden" style="margin-top:16px">✕ End Sortie</button><br><button id="btn-fs-pause" class="btn ghost small" style="margin-top:10px">⛶ Fullscreen</button></div>
+  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><button id="btn-end-pause" class="btn ghost small hidden" style="margin-top:16px">✕ End Sortie</button><br><button id="btn-fs-pause" class="btn ghost small" style="margin-top:10px">⛶ Fullscreen</button><div style="margin-top:14px;display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap"><span style="font-size:10px;letter-spacing:.18em;color:#8fb7c4">GRAPHICS</span><button class="btn ghost small qbtn" data-q="low">LOW</button><button class="btn ghost small qbtn" data-q="med">MED</button><button class="btn ghost small qbtn" data-q="high">HIGH</button><button id="btn-mute" class="btn ghost small">🔊 SOUND ON</button></div></div>
   <div id="warning" class="hidden">⚠ WARNING ⚠</div>
 </div>
 
@@ -456,6 +458,33 @@ import * as THREE from 'three';
 //    resumed on the start click (browser autoplay policy).
 // ------------------------------------------------------------------
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// Master bus: every sound routes through here so the mute toggle is global.
+// sfxDest(pan) adds a StereoPanner for directional effects; panFor() maps a
+// world position to a left/right pan from the camera's point of view.
+const masterGain = audioCtx.createGain();
+masterGain.connect(audioCtx.destination);
+let muted = false;
+try { muted = localStorage.getItem('ironSkiesMuted') === '1'; } catch (e) {}
+masterGain.gain.value = muted ? 0 : 1;
+function sfxDest(pan) {
+  if (!pan || !audioCtx.createStereoPanner) return masterGain;
+  const p = audioCtx.createStereoPanner();
+  p.pan.value = Math.max(-1, Math.min(1, pan));
+  p.connect(masterGain);
+  return p;
+}
+const _panV = new THREE.Vector3(), _panF = new THREE.Vector3(), _panR = new THREE.Vector3();
+function panFor(pos) {
+  if (!pos) return 0;
+  _panV.copy(pos).sub(camera.position); _panV.y = 0;
+  if (_panV.lengthSq() < 4) return 0;
+  _panV.normalize();
+  camera.getWorldDirection(_panF); _panF.y = 0;
+  if (_panF.lengthSq() < 0.001) return 0;
+  _panF.normalize();
+  _panR.set(-_panF.z, 0, _panF.x);
+  return Math.max(-1, Math.min(1, _panV.dot(_panR)));
+}
 const SoundFX = {
   shoot: () => {
     const osc = audioCtx.createOscillator();
@@ -466,11 +495,11 @@ const SoundFX = {
     gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(masterGain);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.15);
   },
-  explosion: () => {
+  explosion: (pan = 0) => {
     const bufferSize = audioCtx.sampleRate * 0.4;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -488,7 +517,7 @@ const SoundFX = {
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(sfxDest(pan));
     noise.start();
   },
   // --- additions in the same style ---
@@ -501,13 +530,13 @@ const SoundFX = {
   locked: () => { blip(1560, 1560, 0.09, 'square', 0.09); setTimeout(() => blip(1560, 1560, 0.09, 'square', 0.09), 110); },
   hit: () => blip(300, 140, 0.07, 'triangle', 0.1),
   hurt: () => { noiseBurst(0.25, 500, 120, 0.22); blip(140, 70, 0.25, 'sawtooth', 0.12); },
-  bigExplosion: () => { SoundFX.explosion(); setTimeout(() => SoundFX.explosion(), 130); noiseBurst(1.1, 300, 40, 0.3); },
+  bigExplosion: (pan = 0) => { SoundFX.explosion(pan); setTimeout(() => SoundFX.explosion(pan), 130); noiseBurst(1.1, 300, 40, 0.3, pan); },
   roll: () => noiseBurst(0.35, 1200, 2400, 0.05),
   alarm: () => { blip(720, 720, 0.14, 'square', 0.05); setTimeout(() => blip(720, 720, 0.14, 'square', 0.05), 190); },
   radio: () => { blip(980, 740, 0.07, 'sine', 0.05); setTimeout(() => blip(1240, 1240, 0.05, 'sine', 0.04), 90); },
   upgrade: () => { blip(660, 660, 0.09, 'triangle', 0.1); setTimeout(() => blip(990, 990, 0.12, 'triangle', 0.1), 100); },
 };
-function blip(f0, f1, dur, type, vol) {
+function blip(f0, f1, dur, type, vol, pan = 0) {
   if (audioCtx.state === 'suspended') return;
   const t = audioCtx.currentTime;
   const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
@@ -516,10 +545,10 @@ function blip(f0, f1, dur, type, vol) {
   osc.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
   gain.gain.setValueAtTime(vol, t);
   gain.gain.exponentialRampToValueAtTime(0.005, t + dur);
-  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.connect(gain); gain.connect(sfxDest(pan));
   osc.start(); osc.stop(t + dur);
 }
-function noiseBurst(dur, f0, f1, vol) {
+function noiseBurst(dur, f0, f1, vol, pan = 0) {
   if (audioCtx.state === 'suspended') return;
   const t = audioCtx.currentTime;
   const len = Math.floor(audioCtx.sampleRate * dur);
@@ -533,7 +562,7 @@ function noiseBurst(dur, f0, f1, vol) {
   const gain = audioCtx.createGain();
   gain.gain.setValueAtTime(vol, t);
   gain.gain.exponentialRampToValueAtTime(0.005, t + dur);
-  src.connect(flt); flt.connect(gain); gain.connect(audioCtx.destination);
+  src.connect(flt); flt.connect(gain); gain.connect(sfxDest(pan));
   src.start();
 }
 // Continuous engine: two detuned saws (run) crossfaded against a low
@@ -545,20 +574,20 @@ const EngineAudio = {
     const ctx = audioCtx;
     this.idleOsc = ctx.createOscillator(); this.idleOsc.type = 'triangle'; this.idleOsc.frequency.value = 48;
     this.idleGain = ctx.createGain(); this.idleGain.gain.value = 0;
-    this.idleOsc.connect(this.idleGain); this.idleGain.connect(ctx.destination); this.idleOsc.start();
+    this.idleOsc.connect(this.idleGain); this.idleGain.connect(masterGain); this.idleOsc.start();
     this.runOsc = ctx.createOscillator(); this.runOsc.type = 'sawtooth';
     this.runOsc2 = ctx.createOscillator(); this.runOsc2.type = 'square';
     this.runFilter = ctx.createBiquadFilter(); this.runFilter.type = 'lowpass'; this.runFilter.frequency.value = 260;
     this.runGain = ctx.createGain(); this.runGain.gain.value = 0;
     this.runOsc.connect(this.runFilter); this.runOsc2.connect(this.runFilter);
-    this.runFilter.connect(this.runGain); this.runGain.connect(ctx.destination);
+    this.runFilter.connect(this.runGain); this.runGain.connect(masterGain);
     this.runOsc.start(); this.runOsc2.start();
     const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.wind = ctx.createBufferSource(); this.wind.buffer = buf; this.wind.loop = true;
     this.windFilter = ctx.createBiquadFilter(); this.windFilter.type = 'bandpass'; this.windFilter.frequency.value = 500;
     this.windGain = ctx.createGain(); this.windGain.gain.value = 0;
-    this.wind.connect(this.windFilter); this.windFilter.connect(this.windGain); this.windGain.connect(ctx.destination);
+    this.wind.connect(this.windFilter); this.windFilter.connect(this.windGain); this.windGain.connect(masterGain);
     this.wind.start();
   },
   update(speedRatio, boosting, dt) {
@@ -586,7 +615,7 @@ const Ambience = {
   nodes: [],
   start() {
     const ctx = audioCtx, t = ctx.currentTime;
-    const gain = ctx.createGain(); gain.gain.value = 0.0; gain.connect(ctx.destination);
+    const gain = ctx.createGain(); gain.gain.value = 0.0; gain.connect(masterGain);
     gain.gain.linearRampToValueAtTime(0.035, t + 2.5);
     const osc = ctx.createOscillator(); osc.type = 'sine';
     osc.frequency.setValueAtTime(640, t);
@@ -594,7 +623,7 @@ const Ambience = {
     const lfoGain = ctx.createGain(); lfoGain.gain.value = 130;
     lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
     osc.connect(gain); osc.start(); lfo.start();
-    const radioGain = ctx.createGain(); radioGain.gain.value = 0.012; radioGain.connect(ctx.destination);
+    const radioGain = ctx.createGain(); radioGain.gain.value = 0.012; radioGain.connect(masterGain);
     const len = ctx.sampleRate, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
     const noise = ctx.createBufferSource(); noise.buffer = buf; noise.loop = true;
@@ -614,8 +643,31 @@ const Ambience = {
 // 2. CORE SETUP
 // ================================================================
 const container = document.getElementById('game');
+// Adaptive graphics presets (Cross-Device Craft Rule §1): switchable any time
+// from the pause banner without touching game state. First load auto-picks
+// MED on touch/small screens, HIGH on desktop; the choice is then remembered.
+const QUALITY_PRESETS = {
+  low: { pr: 1, particles: 0.3, fx: false },
+  med: { pr: 1.5, particles: 0.6, fx: true },
+  high: { pr: 2, particles: 1, fx: true },
+};
+let qualityName = null;
+try { qualityName = localStorage.getItem('ironSkiesQuality'); } catch (e) {}
+if (!QUALITY_PRESETS[qualityName]) {
+  qualityName = (window.matchMedia('(pointer: coarse)').matches || Math.min(window.innerWidth, window.innerHeight) < 520) ? 'med' : 'high';
+}
+let Q = QUALITY_PRESETS[qualityName];
+function applyQuality(name) {
+  if (!QUALITY_PRESETS[name]) return;
+  qualityName = name; Q = QUALITY_PRESETS[name];
+  try { localStorage.setItem('ironSkiesQuality', name); } catch (e) {}
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.pr));
+  if (hangar) hangar.r.setPixelRatio(Math.min(window.devicePixelRatio, Q.pr));
+  document.querySelectorAll('.qbtn').forEach(b => b.classList.toggle('qactive', b.dataset.q === name));
+}
+window.__quality = () => qualityName;
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.pr));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -773,15 +825,15 @@ const sparks = new ParticlePool(700, { size: 3.4, gravity: -14, drag: 0.985 });
 const smoke = new ParticlePool(500, { size: 9, additive: false, opacity: 0.34, gravity: 5, drag: 0.99 });
 scene.add(sparks.points, smoke.points);
 function explosionFx(p, scale = 1, fire = true) {
-  const n = Math.floor(26 * scale);
+  const n = Math.floor(26 * scale * Q.particles);
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, b = Math.acos(rand(-1, 1)), s = rand(6, 42) * scale;
     sparks.spawn(p.x, p.y, p.z, Math.sin(b) * Math.cos(a) * s, Math.cos(b) * s, Math.sin(b) * Math.sin(a) * s,
       rand(0.35, 0.9), 1, rand(0.35, 0.75), 0.15);
   }
-  for (let i = 0; i < 10 * scale; i++)
+  for (let i = 0; i < 10 * scale * Q.particles; i++)
     smoke.spawn(p.x + rand(-3, 3), p.y + rand(-3, 3), p.z + rand(-3, 3), rand(-4, 4), rand(3, 10), rand(-4, 4), rand(0.8, 1.8), 0.12, 0.12, 0.12);
-  if (fire) SoundFX.explosion();
+  if (fire) SoundFX.explosion(panFor(p));
 }
 // Wingtip contrails while boosting + a cheap "speed line" feel via FOV.
 function trailFx(p, dir) {
@@ -1121,7 +1173,7 @@ function applySky(i) {
   sunFx.discMat.color.set(s.sun); sunFx.glowMat.color.set(s.sun);
   for (const sh of sunFx.shafts) sh.mat.color.set(s.sun);
   sunFx.base = s.rays ?? 0;
-  sunFx.group.visible = sunFx.base > 0.01;
+  sunFx.group.visible = Q.fx && sunFx.base > 0.01;
   sunFx.discMat.opacity = 0.95 * Math.min(1, sunFx.base + 0.35);
   sunFx.glowMat.opacity = 0.55 * Math.min(1, sunFx.base + 0.3);
 }
@@ -1397,7 +1449,7 @@ function damageTarget(t, dmg) {
   t.hp -= dmg;
   if (t.hp <= 0) {
     t.alive = false;
-    if (t.kind === 'boss') { explosionFx(t.group.position, 4, false); SoundFX.bigExplosion(); }
+    if (t.kind === 'boss') { explosionFx(t.group.position, 4, false); SoundFX.bigExplosion(panFor(t.group.position)); }
     else explosionFx(t.group.position, t.kind === 'ship' ? 2.6 : 1.7);
     if (t.kind !== 'ship' && t.kind !== 'boss') scene.remove(t.group);
     missionKills++;
@@ -1890,7 +1942,7 @@ function initHangar() {
   if (hangar) return;
   const cv = el('hangar-canvas');
   const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
-  r.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  r.setPixelRatio(Math.min(window.devicePixelRatio, Q.pr));
   r.outputColorSpace = THREE.SRGBColorSpace;
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.toneMappingExposure = 1.0;
@@ -2432,6 +2484,18 @@ function toggleFullscreen() {
   else document.documentElement.requestFullscreen().catch(() => {});
 }
 el('btn-fs-pause').addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
+document.querySelectorAll('.qbtn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); applyQuality(b.dataset.q); }));
+document.querySelectorAll('.qbtn').forEach(b => b.classList.toggle('qactive', b.dataset.q === qualityName));
+const muteBtn = el('btn-mute');
+function renderMute() { muteBtn.textContent = muted ? '🔇 SOUND OFF' : '🔊 SOUND ON'; }
+muteBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  muted = !muted;
+  masterGain.gain.value = muted ? 0 : 1;
+  try { localStorage.setItem('ironSkiesMuted', muted ? '1' : '0'); } catch (err) {}
+  renderMute();
+});
+renderMute();
 el('btn-fs-start').addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
 // touch joystick
 const stickBase = el('stick-base'), stickKnob = el('stick-knob');
@@ -2527,6 +2591,7 @@ function frame(now) {
   elapsed += dt;
   if (!paused) {
     if (ENV.update) ENV.update(dt, elapsed, player.group.position);
+    sunFx.group.visible = Q.fx && sunFx.base > 0.01;
     if (sunFx.group.visible) for (const sh of sunFx.shafts) sh.mat.opacity = sunFx.base * 0.16 * (0.75 + 0.25 * Math.sin(elapsed * 0.6 + sh.ph));
     sparks.update(dt); smoke.update(dt);
     if (state === 'flying' && MISSION && !MISSION.over) {
@@ -2552,7 +2617,7 @@ function frame(now) {
 initBackdrop();
 requestAnimationFrame(frame);
 // Small handle for automated play-testing (harmless in play).
-window.__ironSkies = { SAVE, player, enemies, targets, MISSIONS, ENV, MEDALS, earnedMedals, renderer, launchMission, launchMode, setPlayerJet, damageEnemy, damageTarget, damagePlayer, getState: () => state, getMission: () => MISSION };
+window.__ironSkies = { SAVE, player, enemies, targets, MISSIONS, ENV, MEDALS, earnedMedals, renderer, launchMission, launchMode, setPlayerJet, damageEnemy, damageTarget, damagePlayer, getState: () => state, getMission: () => MISSION, getQuality: () => qualityName, getMuted: () => muted, masterGain };
 // Ambience starts on the first interaction anywhere (autoplay policy).
 window.addEventListener('pointerdown', function arm() {
   audioCtx.resume();
