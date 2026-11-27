@@ -933,7 +933,7 @@ function clearEnvironment() {
 }
 
 // Shared procedural buildings: window-lit blocks with collision, used by several theatres.
-function buildingCluster(g, cx, cz, n, { w = [26, 60], h = [14, 46], d = [26, 60], spread = 190, lit = 0.3 } = {}) {
+function buildingCluster(g, cx, cz, n, { w = [26, 60], h = [14, 46], d = [26, 60], spread = 190, lit = 0.3, yBase = 0 } = {}) {
   const winTex = canvasTexture((ctx, W, H) => {
     ctx.fillStyle = '#33353d'; ctx.fillRect(0, 0, W, H);
     for (let y = 6; y < H - 4; y += 11) for (let x = 5; x < W - 4; x += 10) {
@@ -947,9 +947,9 @@ function buildingCluster(g, cx, cz, n, { w = [26, 60], h = [14, 46], d = [26, 60
     const x = cx + rand(-spread, spread), z = cz + rand(-spread, spread);
     const bw = rand(w[0], w[1]), bh = rand(h[0], h[1]), bd = rand(d[0], d[1]);
     const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, bh / 2, z); m.scale.set(bw, bh, bd);
+    m.position.set(x, yBase + bh / 2, z); m.scale.set(bw, bh, bd);
     g.add(m);
-    ENV.colliders.push({ x, z, r: Math.max(bw, bd) * 0.62, h: bh });
+    ENV.colliders.push({ x, z, r: Math.max(bw, bd) * 0.62, h: yBase + bh });
   }
 }
 // Shared mountain scenery: a ring of tall peaks (green slopes or bare rock, snow
@@ -975,8 +975,98 @@ function mountainRing(g, { count = 16, rMin = 3000, rMax = 4600, hMin = 380, hMa
     foot.position.set(Math.sin(fa) * fd, fh / 2 - 6, Math.cos(fa) * fd); g.add(foot);
   }
 }
-function envAirbase(g) { // M1 — dawn, burning base
-  g.add(groundPlane(0x3f7031));
+// ---- M1 coastal archipelago terrain --------------------------------------
+// One analytic height function drives BOTH the terrain mesh and ENV.groundY,
+// so what you see is exactly what you can crash into — at every graphics
+// preset (only mesh resolution, tree counts and foam detail scale).
+function m1RiverX(z) {
+  let x = 3100 - (z + 2600) * 0.55 + 160 * Math.sin(z * 0.0009 + 0.5);
+  if (z > 1200) x -= (z - 1200) * 1.6;
+  return x;
+}
+function m1Height(x, z) {
+  const shoreX = -1500 + 520 * Math.sin(z * 0.00045) + 260 * Math.sin(z * 0.0013 + 1.7);
+  const d = Math.min(x - shoreX, 2500 - z + 300 * Math.sin(x * 0.0008));
+  let h = d <= 0 ? Math.max(-26, -16 + d * 0.01) : Math.min(150, d * 0.055);
+  const inland = clamp((d - 250) / 900, 0, 1);
+  if (inland > 0) {
+    const n = Math.sin(x * 0.0011 + Math.sin(z * 0.0009) * 2.1) * Math.cos(z * 0.0013 + Math.sin(x * 0.0007) * 1.6);
+    h += n * 24 * inland + Math.max(0, d - 1200) * 0.028 * inland;
+    const terr = Math.floor(h / 16) * 16 + 8;                       // stepped terraces
+    h = h * (1 - 0.55 * inland) + terr * (0.55 * inland);
+  }
+  const rFade = clamp((z + 2900) / 300, 0, 1) * clamp((2600 - z) / 300, 0, 1);
+  if (rFade > 0) {
+    const dxr = Math.abs(x - m1RiverX(z));
+    if (dxr < 210) { const t = clamp((210 - dxr) / 120, 0, 1); h = h * (1 - t * rFade) + (-7) * t * rFade; }
+  }
+  const di = Math.hypot(x + 1500, z - 2300);                        // delta island
+  if (di < 600) h += 24 * Math.exp(-(di * di) / (2 * 200 * 200));
+  const pe = Math.hypot(x / 700, z / 1050);                         // airbase plateau, flattened last
+  if (pe < 1.25) { const t = clamp((1.25 - pe) / 0.5, 0, 1); h = h * (1 - t) + 0.2 * t; }
+  return h;
+}
+const qFactor = () => qualityName === 'low' ? 0.35 : qualityName === 'med' ? 0.65 : 1;
+function buildM1Terrain(g) {
+  const seg = qualityName === 'low' ? 80 : qualityName === 'med' ? 120 : 168;
+  const geo = new THREE.PlaneGeometry(9800, 9800, seg, seg);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const cSand = new THREE.Color(0xdec27f), cFoam = new THREE.Color(0xf6f2e4), cDeep = new THREE.Color(0x7d9b6d),
+    cGrass = new THREE.Color(0x5da24b), cGrass2 = new THREE.Color(0x3e7d33), cRock = new THREE.Color(0x8a7f6a), tmp = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), h = m1Height(x, z);
+    pos.setY(i, h);
+    const jit = (Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1) * 0.05;
+    const onPlateau = Math.hypot(x / 700, z / 1050) < 1.05;
+    if (onPlateau && h > -1) tmp.copy(cGrass).offsetHSL(0, 0, jit - 0.025);
+    else if (h < -2) tmp.copy(cSand).lerp(cDeep, clamp((-h - 2) / 18, 0, 1));
+    else if (h < 0.7) tmp.copy(cFoam);
+    else if (h < 3.5) tmp.copy(cSand);
+    else {
+      tmp.copy(cGrass).lerp(cGrass2, clamp((h - 3.5) / 120, 0, 1)).offsetHSL(0, 0, jit - 0.025);
+      if (h > 120) tmp.lerp(cRock, clamp((h - 120) / 60, 0, 0.5));
+    }
+    colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  // water with slowly scrolling streaks + foam flecks along the waterline
+  const streakTex = canvasTexture((ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h);
+    for (let i = 0; i < 46; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${rand(0.05, 0.16)})`;
+      ctx.beginPath(); ctx.ellipse(rand(0, w), rand(0, h), rand(14, 46), rand(3, 7), 0, 0, 6.29); ctx.fill();
+    }
+  }, 256, 256);
+  streakTex.wrapS = streakTex.wrapT = THREE.RepeatWrapping; streakTex.repeat.set(26, 26);
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(15000, 15000),
+    new THREE.MeshStandardMaterial({ color: 0x1463b4, map: streakTex, transparent: true, opacity: 0.9, roughness: 0.32, metalness: 0.05, fog: false }));
+  water.rotation.x = -Math.PI / 2; water.position.y = 0;
+  g.add(water);
+  const foamN = Math.round(380 * qFactor());
+  const foam = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 10),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }), foamN);
+  const M4 = new THREE.Matrix4(), Q4 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), S4 = new THREE.Vector3(), P4 = new THREE.Vector3();
+  let placed = 0, guard = 0;
+  while (placed < foamN && guard++ < foamN * 30) {
+    const x = rand(-4600, 4600), z = rand(-4600, 4600);
+    if (Math.abs(m1Height(x, z)) > 1.3) continue;
+    if (Math.hypot(x / 700, z / 1050) < 1.35) continue;   // no foam on the airbase plateau
+    const s = rand(6, 17);
+    P4.set(x, 0.18, z); S4.set(s, s, 1);
+    M4.compose(P4, Q4, S4); foam.setMatrixAt(placed++, M4);
+  }
+  while (placed < foamN) { M4.makeScale(0, 0, 0); foam.setMatrixAt(placed++, M4); }
+  g.add(foam);
+  return (dt, t) => { streakTex.offset.set(t * 0.008, t * 0.005); foam.material.opacity = 0.42 + 0.16 * Math.sin(t * 0.8); };
+}
+
+function envAirbase(g) { // M1 — sunset coastal archipelago, burning base
+  ENV.groundY = (x, z) => Math.max(m1Height(x, z), 0);
+  const waterUpdate = buildM1Terrain(g);
   const runway = box(46, 0.3, 1500, 0x2c2e33, 0, 0.1, 0); g.add(runway);
   for (let z = -700; z <= 700; z += 90) g.add(box(2.2, 0.35, 26, 0xf5f5f5, 0, 0.15, z));
   for (const sx of [-260, 240]) for (let i = 0; i < 4; i++) {
@@ -990,36 +1080,33 @@ function envAirbase(g) { // M1 — dawn, burning base
   ENV.colliders.push({ x: 120, z: -120, r: 12, h: 48 });
   buildingCluster(g, 460, -300, 9, { h: [12, 32], spread: 150, lit: 0.35 });   // HQ + barracks blocks
   buildingCluster(g, -470, 320, 7, { h: [10, 26], spread: 130, lit: 0.3 });    // depot + admin blocks
-  buildingCluster(g, -400, -2950, 16, { w: [50, 110], h: [80, 250], d: [50, 110], spread: 620, lit: 0.4 }); // Asteria city skyline, north horizon
-  buildingCluster(g, 2750, 1500, 12, { w: [50, 110], h: [70, 210], d: [50, 110], spread: 480, lit: 0.4 });  // eastern suburbs skyline
+  buildingCluster(g, -400, -2950, 16, { w: [50, 110], h: [80, 250], d: [50, 110], spread: 620, lit: 0.4, yBase: m1Height(-400, -2950) - 2 }); // Asteria city skyline, north horizon
+  buildingCluster(g, 2750, 1500, 12, { w: [50, 110], h: [70, 210], d: [50, 110], spread: 480, lit: 0.4, yBase: m1Height(2750, 1500) - 2 });  // eastern suburbs skyline
   mountainRing(g, { rMin: 3400 });
-  const hillMat = new THREE.MeshStandardMaterial({ color: 0x356b2a, roughness: 1 });
-  for (let i = 0; i < 20; i++) {
-    const hx = rand(-2400, 2400), hz = rand(-2400, 2400);
-    if (Math.abs(hx) < 170) continue;                                        // runway corridor
-    if (Math.hypot(hx - 460, hz + 300) < 340 || Math.hypot(hx + 470, hz - 320) < 320) continue; // base clusters
-    if (Math.hypot(hx - 260, hz + 160) < 300 || Math.hypot(hx + 260, hz + 160) < 300) continue; // hangars
-    const h = rand(50, 160), r = rand(120, 300);
-    const hill = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), hillMat);
-    hill.position.set(hx, h / 2 - 4, hz); g.add(hill);
-    ENV.colliders.push({ x: hx, z: hz, r: r * 0.8, h });
-  }
   const trunkG = new THREE.CylinderGeometry(1.1, 1.4, 7, 5), leafG = new THREE.ConeGeometry(5.5, 13, 6);
-  const trees = new THREE.InstancedMesh(leafG, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), 160);
-  const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), 160);
-  const M4 = new THREE.Matrix4();
-  for (let i = 0; i < 160; i++) {
-    const x = rand(-2600, 2600), z = rand(-2600, 2600);
-    if (Math.abs(x) < 90 || Math.hypot(x - 460, z + 300) < 220 || Math.hypot(x + 470, z - 320) < 200) M4.makeScale(0, 0, 0);
-    else M4.makeTranslation(x, 12, z);
-    trees.setMatrixAt(i, M4);
-    M4.makeTranslation(x, 3.5, z); trunks.setMatrixAt(i, M4);
+  const treeN = Math.round(850 * qFactor());
+  const trees = new THREE.InstancedMesh(leafG, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), treeN);
+  const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), treeN);
+  const M4 = new THREE.Matrix4(), QI = new THREE.Quaternion(), SV = new THREE.Vector3(), PV = new THREE.Vector3();
+  let placedT = 0, guardT = 0;
+  while (placedT < treeN && guardT++ < treeN * 40) {
+    const x = rand(-4300, 4300), z = rand(-4300, 4300), h = m1Height(x, z);
+    if (h < 4.5 || h > 135) continue;                                            // no trees in water, river or on beaches
+    if (Math.hypot(x / 700, z / 1050) < 1.35) continue;                          // keep the airbase clear
+    if (Math.hypot(x + 400, z + 2950) < 720 || Math.hypot(x - 2750, z - 1500) < 580) continue; // not inside the skylines
+    const slope = Math.abs(m1Height(x + 14, z) - h) + Math.abs(m1Height(x, z + 14) - h);
+    if (slope > 15) continue;                                                    // not on terrace cliffs
+    const s = rand(0.8, 1.6);
+    PV.set(x, h + 10 * s, z); SV.set(s, s, s); M4.compose(PV, QI, SV); trees.setMatrixAt(placedT, M4);
+    PV.set(x, h + 3.2 * s, z); M4.compose(PV, QI, SV); trunks.setMatrixAt(placedT, M4);
+    placedT++;
   }
+  while (placedT < treeN) { M4.makeScale(0, 0, 0); trees.setMatrixAt(placedT, M4); trunks.setMatrixAt(placedT, M4); placedT++; }
   g.add(trees, trunks);
   const fires = [];
   for (let i = 0; i < 9; i++) { const f = fireGlow(rand(-320, 320), 0, rand(-700, 700), rand(0.8, 1.7)); g.add(f); fires.push(f); }
   addClouds(g, 30, 620, 3600, 0xffffff, [260, 560]);
-  return (dt, t) => { for (const f of fires) { f.children[0].scale.setScalar(1 + Math.sin(t * 9 + f.position.x) * 0.16); if (Math.random() < 0.25) smoke.spawn(f.position.x, 10, f.position.z, rand(-1, 1), rand(7, 12), rand(-1, 1), rand(1, 2), 0.1, 0.1, 0.1); } };
+  return (dt, t) => { waterUpdate(dt, t); for (const f of fires) { f.children[0].scale.setScalar(1 + Math.sin(t * 9 + f.position.x) * 0.16); if (Math.random() < 0.25) smoke.spawn(f.position.x, 10, f.position.z, rand(-1, 1), rand(7, 12), rand(-1, 1), rand(1, 2), 0.1, 0.1, 0.1); } };
 }
 function envValley(g) { // M2 — green valley, river, convoy road
   g.add(groundPlane(0x3f7031));
@@ -1190,7 +1277,7 @@ function envStorm(g) { // M6 — high-altitude storm above a cloud sea
 }
 const ENV_BUILDERS = [envAirbase, envValley, envFrozen, envCity, envSea, envStorm];
 const SKIES = [
-  { bg: 0x2b6fd2, fog: [0xcfe2f2, 900, 6500], hemi: 0.85, sun: 0xffb37a, sunI: 1.5, sunPos: [900, 420, -1600], rays: 1.0 },   // dawn
+  { bg: 0x2a5fae, fog: [0xf7a54d, 2600, 11500], hemi: 0.9, sun: 0xffb37a, sunI: 1.6, sunPos: [900, 420, -1600], rays: 1.0 },   // sunset coast
   { bg: 0x2f6fd2, fog: [0xcfe2f2, 1200, 8000], hemi: 1.0, sun: 0xfff2d8, sunI: 1.7, sunPos: [1200, 1600, -800], rays: 0.55 }, // day valley
   { bg: 0x0a1420, fog: [0x0d1a29, 500, 4200], hemi: 0.5, sun: 0xbfd9ff, sunI: 0.55, sunPos: [-600, 900, -400], rays: 0 },  // night snow
   { bg: 0x0c0e14, fog: [0x11131c, 600, 5200], hemi: 0.42, sun: 0x8fa3c8, sunI: 0.4, sunPos: [400, 700, 600], rays: 0 },    // blackout city
