@@ -930,7 +930,7 @@ function envAirbase(g) { // M1 — dawn, burning base
   g.add(trees, trunks);
   const fires = [];
   for (let i = 0; i < 9; i++) { const f = fireGlow(rand(-320, 320), 0, rand(-700, 700), rand(0.8, 1.7)); g.add(f); fires.push(f); }
-  addClouds(g, 16, 620, 3600, 0xffd9b0);
+  addClouds(g, 16, 620, 3600, 0xe6f2ff);
   return (dt, t) => { for (const f of fires) { f.children[0].scale.setScalar(1 + Math.sin(t * 9 + f.position.x) * 0.16); if (Math.random() < 0.25) smoke.spawn(f.position.x, 10, f.position.z, rand(-1, 1), rand(7, 12), rand(-1, 1), rand(1, 2), 0.1, 0.1, 0.1); } };
 }
 function envValley(g) { // M2 — green valley, river, convoy road
@@ -962,7 +962,7 @@ function envValley(g) { // M2 — green valley, river, convoy road
   buildingCluster(g, 640, -640, 22, { w: [22, 46], h: [16, 58], d: [22, 46], spread: 175, lit: 0.55 }); // riverside town — tall blocks
   buildingCluster(g, -280, 1500, 8, { w: [18, 34], h: [9, 20], d: [18, 34], spread: 120, lit: 0.5 });  // farmstead
   mountainRing(g, { count: 14 });
-  addClouds(g, 20, 560, 3800);
+  addClouds(g, 20, 560, 3800, 0xeef7ff);
   return null;
 }
 function envFrozen(g) { // M3 — night, snow peaks, searchlights
@@ -1071,7 +1071,7 @@ function envSea(g) { // M5 — animated ocean
   g.add(box(10, 7, 10, 0x222222, 2280, 68, 700, { emissive: 0xffe9a8, ei: 1.4 }));
   ENV.colliders.push({ x: 2280, z: 700, r: 10, h: 72 });
   const base = geo.attributes.position.array.slice();
-  addClouds(g, 18, 520, 4000);
+  addClouds(g, 18, 520, 4000, 0xeef7ff);
   return (dt, t) => {
     const arr = geo.attributes.position.array;
     for (let i = 0; i < arr.length; i += 3) {
