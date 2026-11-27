@@ -683,6 +683,8 @@ function applyQuality(name) {
 }
 window.__quality = () => qualityName;
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.pr));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -735,6 +737,7 @@ function buildJet(o) {
   const g = new THREE.Group();
   const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
     const m = new THREE.Mesh(geo, mat);
+    m.castShadow = true;
     m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.scale.set(sx, sy, sz);
     g.add(m); return m;
   };
@@ -876,6 +879,13 @@ function trailFx(p, dir) {
 const hemi = new THREE.HemisphereLight(0xbfe3ff, 0x33402a, 0.9);
 const sun = new THREE.DirectionalLight(0xffffff, 1.6);
 scene.add(hemi, sun);
+scene.add(sun.target);
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -700; sun.shadow.camera.right = 700;
+sun.shadow.camera.top = 700; sun.shadow.camera.bottom = -700;
+sun.shadow.camera.near = 100; sun.shadow.camera.far = 4200;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 2.5;
+const sunDirV = new THREE.Vector3(900, 420, -1600).normalize();
 
 function canvasTexture(draw, w = 128, h = 128) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -925,10 +935,10 @@ function fireGlow(x, y, z, s = 1) {
   return g;
 }
 
-const ENV = { group: null, colliders: [], update: null, groundY: () => 0, cullChunks: [] };
+const ENV = { group: null, colliders: [], update: null, groundY: () => 0, cullChunks: [], shadowReady: false };
 function clearEnvironment() {
   if (ENV.group) { scene.remove(ENV.group); ENV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
-  ENV.group = new THREE.Group(); ENV.colliders = []; ENV.update = null; ENV.groundY = () => 0; ENV.cullChunks = [];
+  ENV.group = new THREE.Group(); ENV.colliders = []; ENV.update = null; ENV.groundY = () => 0; ENV.cullChunks = []; ENV.shadowReady = false;
   scene.add(ENV.group);
 }
 
@@ -982,7 +992,7 @@ function mountainRing(g, { count = 16, rMin = 3000, rMax = 4600, hMin = 380, hMa
 // outside the camera frustum are skipped by the renderer, and updateCullChunks
 // also switches off sectors beyond the fog, where nothing is visible anyway.
 const _flatEuler = new THREE.Euler(-Math.PI / 2, 0, 0);
-function instancedChunks(g, geo, mat, items, sector = 2000) {
+function instancedChunks(g, geo, mat, items, sector = 2000, opts = {}) {
   const byKey = new Map();
   for (const it of items) {
     const k = Math.floor(it.x / sector) + ':' + Math.floor(it.z / sector);
@@ -992,6 +1002,7 @@ function instancedChunks(g, geo, mat, items, sector = 2000) {
   const M4 = new THREE.Matrix4(), QI = new THREE.Quaternion(), PV = new THREE.Vector3(), SV = new THREE.Vector3();
   for (const list of byKey.values()) {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
+    if (opts.noShadow) { im.userData.noShadowCast = true; im.userData.noShadowReceive = true; }
     let cx = 0, cz = 0;
     list.forEach((it, i) => {
       PV.set(it.x, it.y, it.z); SV.set(it.s, it.s, it.s);
@@ -1033,6 +1044,7 @@ function m1Height(x, z) {
     const terr = Math.floor(h / 16) * 16 + 8;                       // stepped terraces
     h = h * (1 - 0.55 * inland) + terr * (0.55 * inland);
   }
+  if (d > 2400) h += clamp((d - 2400) / 1600, 0, 1) * 130;          // distant rolling horizon (no pyramid ring)
   const rFade = clamp((z + 2900) / 300, 0, 1) * clamp((2600 - z) / 300, 0, 1);
   if (rFade > 0) {
     const dxr = Math.abs(x - m1RiverX(z));
@@ -1083,6 +1095,7 @@ function buildM1Terrain(g) {
   const water = new THREE.Mesh(new THREE.PlaneGeometry(15000, 15000),
     new THREE.MeshStandardMaterial({ color: 0x1463b4, map: streakTex, transparent: true, opacity: 0.9, roughness: 0.32, metalness: 0.05, fog: false }));
   water.rotation.x = -Math.PI / 2; water.position.y = 0;
+  water.userData.noShadowCast = true; water.userData.noShadowReceive = true;
   g.add(water);
   const foamN = Math.round(380 * qFactor());
   const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false });
@@ -1094,11 +1107,11 @@ function buildM1Terrain(g) {
     if (Math.hypot(x / 700, z / 1050) < 1.35) continue;   // no foam on the airbase plateau
     foamItems.push({ x, y: 0.18, z, s: rand(6, 17), flat: true });
   }
-  instancedChunks(g, new THREE.CircleGeometry(1, 10), foamMat, foamItems, 1600);
+  instancedChunks(g, new THREE.CircleGeometry(1, 10), foamMat, foamItems, 1600, { noShadow: true });
   return (dt, t) => { streakTex.offset.set(t * 0.008, t * 0.005); foamMat.opacity = 0.42 + 0.16 * Math.sin(t * 0.8); };
 }
 
-function envAirbase(g) { // M1 — sunset coastal archipelago, burning base
+function envAirbase(g) { // M1 — sunset coastal archipelago
   ENV.groundY = (x, z) => Math.max(m1Height(x, z), 0);
   const waterUpdate = buildM1Terrain(g);
   const runway = box(46, 0.3, 1500, 0x2c2e33, 0, 0.1, 0); g.add(runway);
@@ -1112,11 +1125,8 @@ function envAirbase(g) { // M1 — sunset coastal archipelago, burning base
   const tower = box(10, 42, 10, 0x6b6259, 120, 21, -120); g.add(tower);
   g.add(box(16, 6, 16, 0x384048, 120, 45, -120, { emissive: 0xffa63a, ei: 0.7 }));
   ENV.colliders.push({ x: 120, z: -120, r: 12, h: 48 });
-  buildingCluster(g, 460, -300, 9, { h: [12, 32], spread: 150, lit: 0.35 });   // HQ + barracks blocks
-  buildingCluster(g, -470, 320, 7, { h: [10, 26], spread: 130, lit: 0.3 });    // depot + admin blocks
   buildingCluster(g, -400, -2950, 16, { w: [50, 110], h: [80, 250], d: [50, 110], spread: 620, lit: 0.4, yBase: m1Height(-400, -2950) - 2 }); // Asteria city skyline, north horizon
   buildingCluster(g, 2750, 1500, 12, { w: [50, 110], h: [70, 210], d: [50, 110], spread: 480, lit: 0.4, yBase: m1Height(2750, 1500) - 2 });  // eastern suburbs skyline
-  mountainRing(g, { rMin: 3400 });
   const trunkG = new THREE.CylinderGeometry(1.1, 1.4, 7, 5), leafG = new THREE.ConeGeometry(5.5, 13, 6);
   const treeN = Math.round(850 * qFactor());
   const leafItems = [], trunkItems = [];
@@ -1134,10 +1144,20 @@ function envAirbase(g) { // M1 — sunset coastal archipelago, burning base
   }
   instancedChunks(g, leafG, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), leafItems);
   instancedChunks(g, trunkG, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), trunkItems);
-  const fires = [];
-  for (let i = 0; i < 9; i++) { const f = fireGlow(rand(-320, 320), 0, rand(-700, 700), rand(0.8, 1.7)); g.add(f); fires.push(f); }
+  const bushItems = [];
+  let guardB = 0;
+  const bushN = Math.round(500 * qFactor());
+  while (bushItems.length < bushN && guardB++ < bushN * 40) {
+    const x = rand(-4300, 4300), z = rand(-4300, 4300), h = m1Height(x, z);
+    if (h < 4 || h > 130) continue;                                              // grass only — never water or sand
+    if (Math.hypot(x / 700, z / 1050) < 1.35) continue;
+    if (Math.hypot(x + 400, z + 2950) < 720 || Math.hypot(x - 2750, z - 1500) < 580) continue;
+    const s = rand(2, 4.6);
+    bushItems.push({ x, y: h + 1.1 * s, z, s });
+  }
+  instancedChunks(g, new THREE.IcosahedronGeometry(1, 0), new THREE.MeshStandardMaterial({ color: 0x2f6b2a, roughness: 1, flatShading: true }), bushItems);
   addClouds(g, 30, 620, 3600, 0xffffff, [260, 560]);
-  return (dt, t) => { waterUpdate(dt, t); for (const f of fires) { f.children[0].scale.setScalar(1 + Math.sin(t * 9 + f.position.x) * 0.16); if (Math.random() < 0.25) smoke.spawn(f.position.x, 10, f.position.z, rand(-1, 1), rand(7, 12), rand(-1, 1), rand(1, 2), 0.1, 0.1, 0.1); } };
+  return (dt, t) => { waterUpdate(dt, t); };
 }
 function envValley(g) { // M2 — green valley, river, convoy road
   g.add(groundPlane(0x3f7031));
@@ -1165,7 +1185,6 @@ function envValley(g) { // M2 — green valley, river, convoy road
   instancedChunks(g, trunk, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), trunkItems);
   buildingCluster(g, 640, -640, 22, { w: [22, 46], h: [16, 58], d: [22, 46], spread: 175, lit: 0.55 }); // riverside town — tall blocks
   buildingCluster(g, -280, 1500, 8, { w: [18, 34], h: [9, 20], d: [18, 34], spread: 120, lit: 0.5 });  // farmstead
-  mountainRing(g, { count: 14 });
   addClouds(g, 20, 560, 3800, 0xffffff);
   return null;
 }
@@ -1322,6 +1341,8 @@ function applySky(i) {
   hemi.intensity = s.hemi;
   sun.color.set(s.sun); sun.intensity = s.sunI;
   sun.position.set(...s.sunPos);
+  sunDirV.set(...s.sunPos).normalize();
+  sun.castShadow = qualityName === 'high' && s.sunI > 0.3;   // clean shadows on HIGH only
   const dir = new THREE.Vector3(...s.sunPos).normalize();
   sunFx.group.position.copy(dir).multiplyScalar(5800);
   sunFx.group.lookAt(0, 0, 0);
@@ -1907,7 +1928,8 @@ function damagePlayer(dmg) {
     player.hp = 0; player.alive = false;
     explosionFx(player.group.position, 3); SoundFX.bigExplosion();
     player.group.visible = false;
-    setTimeout(() => endMission(false), 1400);
+    const mAtDeath = MISSION;
+    setTimeout(() => { if (MISSION === mAtDeath) endMission(false); }, 1400);
   }
 }
 // Crashing into terrain or a solid object is fatal — no scrape, no bounce.
@@ -1974,6 +1996,7 @@ function updatePlayer(dt) {
   const targetSpeed = baseSpeed * (boosting ? 1.75 : 1);
   player.speed += (targetSpeed - player.speed) * Math.min(1, dt * 1.6);
   const fwd = playerForward().clone();
+  const prevX = player.group.position.x, prevY = player.group.position.y, prevZ = player.group.position.z;
   player.group.position.addScaledVector(fwd, player.speed * dt);
   const pos = player.group.position;
   // --- world limits & fatal terrain collision
@@ -1988,8 +2011,14 @@ function updatePlayer(dt) {
   }
   if (pos.y > 1500) pos.y = 1500;
   for (const c of ENV.colliders) {
-    const dx = pos.x - c.x, dz = pos.z - c.z;
-    if (dx * dx + dz * dz < c.r * c.r && pos.y < c.h + 4) { crashPlayer(); break; }
+    // swept check: closest point on this frame's movement segment, so a fast
+    // jet (or a low frame rate) can't tunnel through a thin collider
+    const sx = pos.x - prevX, sz = pos.z - prevZ;
+    const L2 = sx * sx + sz * sz;
+    let t = L2 > 0 ? ((c.x - prevX) * sx + (c.z - prevZ) * sz) / L2 : 0;
+    t = clamp(t, 0, 1);
+    const qx = prevX + sx * t - c.x, qz = prevZ + sz * t - c.z, qy = prevY + (pos.y - prevY) * t;
+    if (qx * qx + qz * qz < c.r * c.r && qy < c.h + 4) { crashPlayer(); break; }
   }
   const rr = Math.hypot(pos.x, pos.z);
   el('warning').classList.toggle('hidden', !(rr > WORLD_R && state === 'flying'));
@@ -2764,6 +2793,15 @@ function frame(now) {
   if (!paused) {
     if (ENV.update) ENV.update(dt, elapsed, player.group.position);
     updateCullChunks();
+    if (!ENV.shadowReady && ENV.group) {
+      ENV.shadowReady = true;
+      ENV.group.traverse(o => { if (o.isMesh) { o.castShadow = !o.userData.noShadowCast; o.receiveShadow = !o.userData.noShadowReceive; } });
+    }
+    if (sun.castShadow) {
+      sun.position.copy(player.group.position).addScaledVector(sunDirV, 1900);
+      sun.target.position.copy(player.group.position);
+      sun.target.updateMatrixWorld();
+    }
     sunFx.group.visible = Q.fx && sunFx.base > 0.01;
     if (sunFx.group.visible) for (const sh of sunFx.shafts) sh.mat.opacity = sunFx.base * 0.16 * (0.75 + 0.25 * Math.sin(elapsed * 0.6 + sh.ph));
     sparks.update(dt); smoke.update(dt);
