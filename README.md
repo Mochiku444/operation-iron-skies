@@ -3,6 +3,8 @@
 **A 3D fighter jet combat game in a single HTML file.** Three.js (CDN) + Web Audio API.
 Zero external 3D models, zero audio files — every jet, city, ship and sound is generated in code.
 
+📋 **[Changelog](CHANGELOG.md)** — what changed in each update.
+
 > November 2032. The Varkovia Federation has invaded. You are **PHANTOM**, elite pilot of
 > **Squadron 07**, defending the Republic of Asteria's skies.
 > *As long as pilots are willing to fly, Asteria is not defeated yet.*
