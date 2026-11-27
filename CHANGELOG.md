@@ -23,6 +23,7 @@ _Nothing yet — the next update lands here._
 - A dedicated SETTINGS screen in the hangar (🎛 Settings next to Armory & Service Record) now houses the graphics presets, the sound toggle and fullscreen; the pause banner's controls were compacted into a single glass panel so they no longer sprawl across the HUD, and they no longer leak into in-flight banner messages (score popups, wave calls).
 - Sky and clouds restyled after Rama's Summit Air reference screenshot: a gradient sky dome (vivid azure at the zenith melting into a pale horizon, per-theatre colours driven by each sky's palette) replaces the flat sky colour, and the clouds are now flat, bright-white stylised puffs with near-solid cores instead of soft blue-tinted blobs.
 - Graphics settings moved out of gameplay (Rama's correction): the pause banner no longer carries the LOW/MED/HIGH buttons — graphics quality is set only in the hangar SETTINGS screen. The pause panel keeps just Fullscreen and Sound, docked at the top centre of the screen (below the title in portrait) so it never covers the jet or the centre of the view.
+- The big lock-on box in the centre of the screen is gone (Rama: 'Hilangkan yang ditengah'). Lock state now shows where your finger already is: the MISSILE button turns amber while locking and pulses red when locked, and the crosshair tints amber/red to match. The lock-on sounds are unchanged.
 
 ### Changed
 - Lobby: **Change Aircraft** is now a proper UI box — dark gradient panel, bright cyan border, amber corner brackets and icon — clearly visible against the hangar.

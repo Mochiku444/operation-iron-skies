@@ -161,10 +161,9 @@
     background:linear-gradient(180deg,var(--hud) 0 30%,transparent 30% 70%,var(--hud) 70% 100%)}
   #crosshair::after{top:50%;left:0;height:1.5px;width:100%;transform:translateY(-50%);
     background:linear-gradient(90deg,var(--hud) 0 30%,transparent 30% 70%,var(--hud) 70% 100%)}
-  #lockbox{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;border:2px solid var(--red);display:none;
-    box-shadow:0 0 14px rgba(255,82,82,.5) inset}
-  #lockbox .lk{position:absolute;left:50%;top:100%;transform:translateX(-50%);font-size:10px;color:var(--red);letter-spacing:.15em;white-space:nowrap}
-  #lockprog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:var(--amber);letter-spacing:.2em;text-shadow:0 0 8px #000}
+  #btn-missile.locking{border-color:var(--amber);color:var(--amber)}
+  #btn-missile.locked{border-color:#ff5252;color:#fff;background:rgba(255,82,82,.35);animation:lockPulse .5s ease-in-out infinite alternate}
+  @keyframes lockPulse{from{box-shadow:0 0 4px rgba(255,82,82,.4)}to{box-shadow:0 0 18px rgba(255,82,82,.9)}}
   #banner{position:absolute;left:50%;top:19%;transform:translateX(-50%);text-align:center;width:100%}
   .qbtn.qactive{border-color:var(--amber);color:var(--amber)}
   #banner-controls{position:fixed;left:50%;top:calc(8px + env(safe-area-inset-top));transform:translateX(-50%);z-index:30;padding:6px 8px;background:rgba(4,12,20,.78);border:1px solid var(--line);backdrop-filter:blur(3px);text-align:center;white-space:nowrap}
@@ -273,8 +272,6 @@
   <div id="radar-wrap"><div id="radar-label">RADAR</div><canvas id="radar" width="296" height="296"></canvas></div>
   <canvas id="ladder" width="460" height="460" class="hidden"></canvas>
   <div id="crosshair"></div>
-  <div id="lockbox"><div class="lk">◈ LOCKED — FIRE MISSILE</div></div>
-  <div id="lockprog"></div>
   <div id="hitmarker">✕</div>
   <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div></div>
   <div id="banner-controls" class="hidden"><button id="btn-end-pause" class="btn ghost small hidden">✕ End Sortie</button><button id="btn-fs-pause" class="btn ghost small">⛶ Fullscreen</button><button id="btn-mute" class="btn ghost small mutebtn">🔊 SOUND ON</button></div>
@@ -1957,18 +1954,16 @@ function updateLock(dt) {
   } else {
     lockTarget = cand; lockProgress = cand ? Math.min(lockProgress, 0.25) : 0;
   }
-  const lb = el('lockbox'), lp = el('lockprog');
+  const mb = el('btn-missile'), ch = el('crosshair');
   if (lockTarget && lockTarget.alive) {
     _v3.copy(lockTarget.group.position).project(camera);
     if (_v3.z < 1) {
-      const x = (_v3.x * 0.5 + 0.5) * window.innerWidth, y = (-_v3.y * 0.5 + 0.5) * window.innerHeight;
-      lb.style.display = 'block';
-      lb.style.left = x + 'px'; lb.style.top = y + 'px';
-      lb.style.borderColor = lockProgress >= 1 ? '#ff5252' : '#ffb454';
-      lp.textContent = lockProgress >= 1 ? '' : `LOCKING ${Math.round(lockProgress * 100)}%`;
-      lp.style.left = x + 'px'; lp.style.top = (y + 52) + 'px';
-    } else lb.style.display = 'none';
-  } else { lb.style.display = 'none'; lp.textContent = ''; }
+      const locked = lockProgress >= 1;
+      mb.classList.toggle('locking', !locked);
+      mb.classList.toggle('locked', locked);
+      ch.style.setProperty('--hud', locked ? '#ff5252' : '#ffb454');
+    } else { mb.classList.remove('locking', 'locked'); ch.style.removeProperty('--hud'); }
+  } else { mb.classList.remove('locking', 'locked'); ch.style.removeProperty('--hud'); }
 }
 function fireMissile() {
   if (state !== 'flying' || !player.alive) return;
