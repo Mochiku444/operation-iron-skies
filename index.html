@@ -863,8 +863,31 @@ function buildingCluster(g, cx, cz, n, { w = [26, 60], h = [14, 46], d = [26, 60
     ENV.colliders.push({ x, z, r: Math.max(bw, bd) * 0.62, h: bh });
   }
 }
+// Shared mountain scenery: a ring of tall peaks (green slopes or bare rock, snow
+// caps on the highest) with a foothill in front of each — the world's horizon.
+function mountainRing(g, { count = 16, rMin = 3000, rMax = 4600, hMin = 380, hMax = 780 } = {}) {
+  const slopeMat = new THREE.MeshStandardMaterial({ color: 0x3d6b2f, roughness: 1 });
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x7d7468, roughness: 1 });
+  const capMat = new THREE.MeshStandardMaterial({ color: 0xe8f2fa, roughness: 0.85 });
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 + rand(-0.12, 0.12);
+    const dist = rand(rMin, rMax), x = Math.sin(a) * dist, z = Math.cos(a) * dist;
+    const h = rand(hMin, hMax), r = h * rand(0.9, 1.25), rot = rand(0, 3);
+    const peak = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), Math.random() < 0.72 ? slopeMat : rockMat);
+    peak.position.set(x, h / 2 - 6, z); peak.rotation.y = rot; g.add(peak);
+    if (h > 540) {
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.4, h * 0.4, 7), capMat);
+      cap.position.set(x, h - h * 0.2 - 6, z); cap.rotation.y = rot; g.add(cap);
+    }
+    ENV.colliders.push({ x, z, r: r * 0.75, h });
+    const fh = h * rand(0.32, 0.45), fr = fh * rand(1.1, 1.5);
+    const foot = new THREE.Mesh(new THREE.ConeGeometry(fr, fh, 7), slopeMat);
+    const fa = a + rand(-0.1, 0.1), fd = dist - rand(500, 900);
+    foot.position.set(Math.sin(fa) * fd, fh / 2 - 6, Math.cos(fa) * fd); g.add(foot);
+  }
+}
 function envAirbase(g) { // M1 — dawn, burning base
-  g.add(groundPlane(0x4a4a3c));
+  g.add(groundPlane(0x3f7031));
   const runway = box(46, 0.3, 1500, 0x2c2e33, 0, 0.1, 0); g.add(runway);
   for (let z = -700; z <= 700; z += 90) g.add(box(2.2, 0.35, 26, 0xf5f5f5, 0, 0.15, z));
   for (const sx of [-260, 240]) for (let i = 0; i < 4; i++) {
@@ -880,6 +903,30 @@ function envAirbase(g) { // M1 — dawn, burning base
   buildingCluster(g, -470, 320, 7, { h: [10, 26], spread: 130, lit: 0.3 });    // depot + admin blocks
   buildingCluster(g, -400, -2950, 16, { w: [50, 110], h: [80, 250], d: [50, 110], spread: 620, lit: 0.4 }); // Asteria city skyline, north horizon
   buildingCluster(g, 2750, 1500, 12, { w: [50, 110], h: [70, 210], d: [50, 110], spread: 480, lit: 0.4 });  // eastern suburbs skyline
+  mountainRing(g, { rMin: 3400 });
+  const hillMat = new THREE.MeshStandardMaterial({ color: 0x356b2a, roughness: 1 });
+  for (let i = 0; i < 20; i++) {
+    const hx = rand(-2400, 2400), hz = rand(-2400, 2400);
+    if (Math.abs(hx) < 170) continue;                                        // runway corridor
+    if (Math.hypot(hx - 460, hz + 300) < 340 || Math.hypot(hx + 470, hz - 320) < 320) continue; // base clusters
+    if (Math.hypot(hx - 260, hz + 160) < 300 || Math.hypot(hx + 260, hz + 160) < 300) continue; // hangars
+    const h = rand(50, 160), r = rand(120, 300);
+    const hill = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), hillMat);
+    hill.position.set(hx, h / 2 - 4, hz); g.add(hill);
+    ENV.colliders.push({ x: hx, z: hz, r: r * 0.8, h });
+  }
+  const trunkG = new THREE.CylinderGeometry(1.1, 1.4, 7, 5), leafG = new THREE.ConeGeometry(5.5, 13, 6);
+  const trees = new THREE.InstancedMesh(leafG, new THREE.MeshStandardMaterial({ color: 0x2c5c22, roughness: 1 }), 160);
+  const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 }), 160);
+  const M4 = new THREE.Matrix4();
+  for (let i = 0; i < 160; i++) {
+    const x = rand(-2600, 2600), z = rand(-2600, 2600);
+    if (Math.abs(x) < 90 || Math.hypot(x - 460, z + 300) < 220 || Math.hypot(x + 470, z - 320) < 200) M4.makeScale(0, 0, 0);
+    else M4.makeTranslation(x, 12, z);
+    trees.setMatrixAt(i, M4);
+    M4.makeTranslation(x, 3.5, z); trunks.setMatrixAt(i, M4);
+  }
+  g.add(trees, trunks);
   const fires = [];
   for (let i = 0; i < 9; i++) { const f = fireGlow(rand(-320, 320), 0, rand(-700, 700), rand(0.8, 1.7)); g.add(f); fires.push(f); }
   addClouds(g, 16, 620, 3600, 0xffd9b0);
@@ -913,6 +960,7 @@ function envValley(g) { // M2 — green valley, river, convoy road
   g.add(trees, trunks);
   buildingCluster(g, 640, -640, 22, { w: [22, 46], h: [16, 58], d: [22, 46], spread: 175, lit: 0.55 }); // riverside town — tall blocks
   buildingCluster(g, -280, 1500, 8, { w: [18, 34], h: [9, 20], d: [18, 34], spread: 120, lit: 0.5 });  // farmstead
+  mountainRing(g, { count: 14 });
   addClouds(g, 20, 560, 3800);
   return null;
 }
@@ -1002,8 +1050,17 @@ function envSea(g) { // M5 — animated ocean
   geo.rotateX(-Math.PI / 2);
   const sea = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x14507c, roughness: 0.32, metalness: 0.25 }));
   sea.position.y = 0; g.add(sea);
-  // Asteria coast: land strip with a port town on the eastern shore
-  g.add(box(760, 7, 10000, 0x8a7f63, 2620, 1, 0));
+  // Asteria coast: green land strip with a port town on the eastern shore
+  g.add(box(760, 7, 10000, 0x4a7a38, 2620, 1, 0));
+  const coastPeakMat = new THREE.MeshStandardMaterial({ color: 0x3d6b2f, roughness: 1 });
+  const coastCapMat = new THREE.MeshStandardMaterial({ color: 0xe8f2fa, roughness: 0.85 });
+  for (let cz = -4200; cz <= 4200; cz += rand(480, 720)) {
+    const h = rand(320, 640), r = h * rand(0.9, 1.2), x = rand(3500, 4300), z = cz + rand(-90, 90);
+    const peak = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), coastPeakMat);
+    peak.position.set(x, h / 2 - 6, z); g.add(peak);
+    if (h > 500) { const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.4, h * 0.4, 7), coastCapMat); cap.position.set(x, h - h * 0.2 - 6, z); g.add(cap); }
+    ENV.colliders.push({ x, z, r: r * 0.75, h });
+  }
   buildingCluster(g, 2620, -700, 16, { w: [42, 90], h: [25, 115], d: [42, 90], spread: 300, lit: 0.5 });
   buildingCluster(g, 2620, 1500, 12, { w: [42, 90], h: [25, 100], d: [42, 90], spread: 240, lit: 0.5 });
   buildingCluster(g, 2620, 700, 10, { w: [36, 75], h: [20, 85], d: [36, 75], spread: 170, lit: 0.5 });

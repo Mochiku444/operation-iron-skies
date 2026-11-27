@@ -13,6 +13,7 @@ _Nothing yet — the next update lands here._
 - Start screen: "click anywhere to start" is now a designed UI unit — a pulsing tap ring with an amber core and animated chevrons — inside a HUD box with amber corner brackets.
 - Portrait touch layout (phones ≤560px wide): narrower objective box, gauge panel above the joystick, ROLL/BOOST as a bottom-right pair — verified zero overlapping elements in Mission and Free Flight.
 - Compact touch mode for very short viewports (≤300px tall, e.g. browser URL bar visible): smaller joystick and radar, repositioned missile button.
+- Greener world with real mountains: Mission 01's airbase now sits in green country (grass ground, 20 hills, 160 scattered pines) ringed by tall peaks with snow caps on the highest; the valley (Mission 02) gained a mountain ring behind its hills, and the Black Sea coast (Mission 05) turned green with a mountain range behind the port.
 
 ### Changed
 - Lobby: **Change Aircraft** is now a proper UI box — dark gradient panel, bright cyan border, amber corner brackets and icon — clearly visible against the hangar.
