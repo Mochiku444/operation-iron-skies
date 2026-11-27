@@ -30,6 +30,7 @@ _Nothing yet — the next update lands here._
 - Bushes join the trees on M1's grassy ground (instanced low-poly blobs, grass only — never water or sand).
 - Clean shadows on the HIGH preset (LOW/MED stay shadow-free for performance): the sun casts real shadow-mapped shadows (2048px PCF-soft) that follow the player — terrain self-shadowing on the terraces, tree/building/jet shadows. Verified by A/B pixel comparison (same scene, MED vs HIGH: +30% shadow-dark pixels on the ground, identical average brightness).
 - Two robustness fixes found while testing the above: building/terrain collision is now swept along the frame's movement segment (a fast jet on a low frame rate can't tunnel through a thin collider), and the delayed mission-end after a death is tied to the mission it belongs to, so it can never end a freshly relaunched mission.
+- Enemies now always come from the front (Rama: 'Buat musuh datang dari depan, bukan belakang'). Waves used to spawn on a full circle around the map centre, so half of them arrived from behind the player; spawnWave now places each wave in an arc ahead of the player's nose (verified: spawn bearings 4–35° off the nose in Missions and Endless), and newly spawned enemies initially face the player for a head-on approach.
 
 ### Changed
 - Lobby: **Change Aircraft** is now a proper UI box — dark gradient panel, bright cyan border, amber corner brackets and icon — clearly visible against the hangar.

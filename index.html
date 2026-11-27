@@ -1446,7 +1446,8 @@ function spawnEnemy(x, y, z, ace = false) {
     patrol: new THREE.Vector3(rand(-2400, 2400), rand(280, 520), rand(-2400, 2400)),
     targetTruck: null, scoreValue: ace ? 300 : 150, credits: ace ? 45 : 22,
   };
-  _m4.lookAt(_zero, _v1.set(-x, 0, -z).normalize(), THREE.Object3D.DEFAULT_UP);
+  _v1.copy(player.group.position); _v1.y = 0; _v1.x -= x; _v1.z -= z;
+  _m4.lookAt(_zero, _v1.normalize(), THREE.Object3D.DEFAULT_UP);
   group.quaternion.setFromRotationMatrix(_m4);
   enemies.push(e);
   return e;
@@ -1903,9 +1904,15 @@ const MISSIONS = [
 ];
 function aliveEnemies() { return enemies.filter(e => e.alive).length; }
 function spawnWave(n, ace, dist) {
+  // Waves always come from the FRONT: an arc ahead of the player, flying
+  // head-on — never from behind (Rama's rule).
+  const pp = player.group.position;
+  const baseA = Math.atan2(-Math.sin(player.yaw), -Math.cos(player.yaw));
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2 + rand(-0.4, 0.4);
-    spawnEnemy(Math.cos(a) * dist * rand(0.7, 1), rand(280, 520), Math.sin(a) * dist * rand(0.7, 1), ace);
+    const spread = n === 1 ? 0 : (i / (n - 1) - 0.5) * 1.1;
+    const a = baseA + spread + rand(-0.15, 0.15);
+    const d = dist * rand(0.85, 1.1);
+    spawnEnemy(pp.x + Math.sin(a) * d, clamp(pp.y + rand(-30, 170), 130, 640), pp.z + Math.cos(a) * d, ace);
     MISSION.spawned++;
   }
 }
