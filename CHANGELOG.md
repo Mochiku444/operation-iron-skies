@@ -16,7 +16,7 @@ _Nothing yet — the next update lands here._
 - Greener world with real mountains: Mission 01's airbase now sits in green country (grass ground, 20 hills, 160 scattered pines) ringed by tall peaks with snow caps on the highest; the valley (Mission 02) gained a mountain ring behind its hills, and the Black Sea coast (Mission 05) turned green with a mountain range behind the port.
 - Fullscreen toggle: a ⛶ Fullscreen button on the start screen and in the pause banner — on phones this hides the browser chrome entirely, which also removes the short-viewport squeeze.
 - A visible sun with god rays: a glowing sun disc sits at each sky's real sun direction, with a fan of additive light shafts that shimmer slowly — strongest at dawn (Mission 01), gentler by day and over the sea, and off at night.
-- Cloud color now follows Rama's reference photo (a blue sky over a mackerel-cloud band): dawn, valley and sea clouds are tinted blue-white instead of warm peach/default white.
+- Cloud color now follows Rama's reference photo (a blue sky over a mackerel-cloud band): dawn, valley and sea clouds are tinted blue-white instead of warm peach/default white. Cloud sprites also ignore scene fog now — the warm dawn fog was washing the new tint out — and Mission 01 carries a denser, larger cloud band so the color actually reads.
 
 ### Changed
 - Lobby: **Change Aircraft** is now a proper UI box — dark gradient panel, bright cyan border, amber corner brackets and icon — clearly visible against the hangar.
