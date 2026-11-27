@@ -270,7 +270,7 @@
   <div id="lockbox"><div class="lk">◈ LOCKED — FIRE MISSILE</div></div>
   <div id="lockprog"></div>
   <div id="hitmarker">✕</div>
-  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><button id="btn-end-pause" class="btn ghost small hidden" style="margin-top:16px">✕ End Sortie</button></div>
+  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><button id="btn-end-pause" class="btn ghost small hidden" style="margin-top:16px">✕ End Sortie</button><br><button id="btn-fs-pause" class="btn ghost small" style="margin-top:10px">⛶ Fullscreen</button></div>
   <div id="warning" class="hidden">⚠ WARNING ⚠</div>
 </div>
 
@@ -301,6 +301,7 @@
     <div class="tap-ring"><span></span><span class="r2"></span><i></i></div>
     <div class="tap-line"><span class="tap-chev">»</span><span class="tap-text">Click anywhere to start</span><span class="tap-chev flip">«</span></div>
   </div>
+  <button class="btn ghost small" id="btn-fs-start" style="margin-top:18px">⛶ Fullscreen</button>
   <div class="controls-note">
     <b>PC:</b> W/S or ↑/↓ pitch · A/D or ←/→ bank · <b>SPACE</b> fire cannon · <b>F</b> missile · <b>Q/E</b> barrel roll · <b>SHIFT</b> afterburner · <b>C</b> camera · <b>P</b> pause<br>
     <b>Mobile:</b> virtual joystick to fly · cannon auto-fires at targets ahead · tap MISSILE / ROLL / BOOST
@@ -2377,6 +2378,12 @@ el('btn-camera').addEventListener('click', toggleCamera);
 el('btn-pause').addEventListener('click', togglePause);
 el('banner').addEventListener('click', () => { if (paused) togglePause(); });
 el('btn-end-pause').addEventListener('click', (e) => { e.stopPropagation(); endSortie(); });
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+}
+el('btn-fs-pause').addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
+el('btn-fs-start').addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
 // touch joystick
 const stickBase = el('stick-base'), stickKnob = el('stick-knob');
 let stickId = null;
