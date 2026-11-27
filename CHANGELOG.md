@@ -15,6 +15,7 @@ _Nothing yet — the next update lands here._
 - Compact touch mode for very short viewports (≤300px tall, e.g. browser URL bar visible): smaller joystick and radar, repositioned missile button.
 - Greener world with real mountains: Mission 01's airbase now sits in green country (grass ground, 20 hills, 160 scattered pines) ringed by tall peaks with snow caps on the highest; the valley (Mission 02) gained a mountain ring behind its hills, and the Black Sea coast (Mission 05) turned green with a mountain range behind the port.
 - Fullscreen toggle: a ⛶ Fullscreen button on the start screen and in the pause banner — on phones this hides the browser chrome entirely, which also removes the short-viewport squeeze.
+- A visible sun with god rays: a glowing sun disc sits at each sky's real sun direction, with a fan of additive light shafts that shimmer slowly — strongest at dawn (Mission 01), gentler by day and over the sea, and off at night.
 
 ### Changed
 - Lobby: **Change Aircraft** is now a proper UI box — dark gradient panel, bright cyan border, amber corner brackets and icon — clearly visible against the hangar.

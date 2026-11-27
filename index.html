@@ -1101,12 +1101,12 @@ function envStorm(g) { // M6 — high-altitude storm above a cloud sea
 }
 const ENV_BUILDERS = [envAirbase, envValley, envFrozen, envCity, envSea, envStorm];
 const SKIES = [
-  { bg: 0x3a4a63, fog: [0xcf8a52, 900, 6500], hemi: 0.85, sun: 0xffb37a, sunI: 1.5, sunPos: [900, 420, -1600] },   // dawn
-  { bg: 0x87bfe8, fog: [0xa8cdea, 1200, 8000], hemi: 1.0, sun: 0xfff2d8, sunI: 1.7, sunPos: [1200, 1600, -800] }, // day valley
-  { bg: 0x0a1420, fog: [0x0d1a29, 500, 4200], hemi: 0.5, sun: 0xbfd9ff, sunI: 0.55, sunPos: [-600, 900, -400] },  // night snow
-  { bg: 0x0c0e14, fog: [0x11131c, 600, 5200], hemi: 0.42, sun: 0x8fa3c8, sunI: 0.4, sunPos: [400, 700, 600] },    // blackout city
-  { bg: 0x7fb2d9, fog: [0x9cc3e2, 1300, 8500], hemi: 0.95, sun: 0xfff2d8, sunI: 1.65, sunPos: [-1000, 1300, -900] }, // sea day
-  { bg: 0x232a33, fog: [0x2b333d, 700, 6000], hemi: 0.55, sun: 0xaFC4de, sunI: 0.7, sunPos: [600, 1000, -600] },  // storm
+  { bg: 0x3a4a63, fog: [0xcf8a52, 900, 6500], hemi: 0.85, sun: 0xffb37a, sunI: 1.5, sunPos: [900, 420, -1600], rays: 1.0 },   // dawn
+  { bg: 0x87bfe8, fog: [0xa8cdea, 1200, 8000], hemi: 1.0, sun: 0xfff2d8, sunI: 1.7, sunPos: [1200, 1600, -800], rays: 0.55 }, // day valley
+  { bg: 0x0a1420, fog: [0x0d1a29, 500, 4200], hemi: 0.5, sun: 0xbfd9ff, sunI: 0.55, sunPos: [-600, 900, -400], rays: 0 },  // night snow
+  { bg: 0x0c0e14, fog: [0x11131c, 600, 5200], hemi: 0.42, sun: 0x8fa3c8, sunI: 0.4, sunPos: [400, 700, 600], rays: 0 },    // blackout city
+  { bg: 0x7fb2d9, fog: [0x9cc3e2, 1300, 8500], hemi: 0.95, sun: 0xfff2d8, sunI: 1.65, sunPos: [-1000, 1300, -900], rays: 0.7 }, // sea day
+  { bg: 0x232a33, fog: [0x2b333d, 700, 6000], hemi: 0.55, sun: 0xaFC4de, sunI: 0.7, sunPos: [600, 1000, -600], rays: 0.18 },  // storm
 ];
 function applySky(i) {
   const s = SKIES[i];
@@ -1115,7 +1115,56 @@ function applySky(i) {
   hemi.intensity = s.hemi;
   sun.color.set(s.sun); sun.intensity = s.sunI;
   sun.position.set(...s.sunPos);
+  const dir = new THREE.Vector3(...s.sunPos).normalize();
+  sunFx.group.position.copy(dir).multiplyScalar(5800);
+  sunFx.group.lookAt(0, 0, 0);
+  sunFx.discMat.color.set(s.sun); sunFx.glowMat.color.set(s.sun);
+  for (const sh of sunFx.shafts) sh.mat.color.set(s.sun);
+  sunFx.base = s.rays ?? 0;
+  sunFx.group.visible = sunFx.base > 0.01;
+  sunFx.discMat.opacity = 0.95 * Math.min(1, sunFx.base + 0.35);
+  sunFx.glowMat.opacity = 0.55 * Math.min(1, sunFx.base + 0.3);
 }
+
+// Visible sun + fake god rays: a glowing disc at the sky's sun direction and a
+// fan of additive light shafts that shimmer slowly. Per-theatre strength comes
+// from SKIES[i].rays — full at dawn, off at night.
+const sunFx = (() => {
+  const glowTex = canvasTexture((ctx, w, h) => {
+    const g = ctx.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,.85)');
+    g.addColorStop(0.6, 'rgba(255,255,255,.25)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  }, 256, 256);
+  const rayTex = canvasTexture((ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const m = ctx.createLinearGradient(0, 0, w, 0);
+    m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(0.35, 'rgba(0,0,0,0)');
+    m.addColorStop(0.65, 'rgba(0,0,0,0)'); m.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = m; ctx.fillRect(0, 0, w, h);
+  }, 128, 256);
+  const group = new THREE.Group();
+  const discMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.95, fog: false });
+  const disc = new THREE.Sprite(discMat); disc.scale.set(620, 620, 1); group.add(disc);
+  const glowMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.5, fog: false });
+  const glow = new THREE.Sprite(glowMat); glow.scale.set(2100, 2100, 1); group.add(glow);
+  const shafts = [];
+  for (let i = 0; i < 7; i++) {
+    const wdt = rand(140, 420), len = rand(2600, 4600);
+    const mat = new THREE.MeshBasicMaterial({ map: rayTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, opacity: 0.1, fog: false });
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(wdt, len), mat);
+    const ang = rand(-0.65, 0.65);
+    p.position.set(Math.sin(ang) * len * 0.32, -Math.cos(ang) * len * 0.32, rand(-60, 60));
+    p.rotation.z = ang;
+    group.add(p); shafts.push({ mat, ph: rand(0, 6.28) });
+  }
+  group.visible = false;
+  scene.add(group);
+  return { group, discMat, glowMat, shafts, base: 0 };
+})();
 
 // ================================================================
 // 6. ENTITIES — player, enemies, wingman, weapons, targets.
@@ -2478,6 +2527,7 @@ function frame(now) {
   elapsed += dt;
   if (!paused) {
     if (ENV.update) ENV.update(dt, elapsed, player.group.position);
+    if (sunFx.group.visible) for (const sh of sunFx.shafts) sh.mat.opacity = sunFx.base * 0.16 * (0.75 + 0.25 * Math.sin(elapsed * 0.6 + sh.ph));
     sparks.update(dt); smoke.update(dt);
     if (state === 'flying' && MISSION && !MISSION.over) {
       MISSION.time += dt;
