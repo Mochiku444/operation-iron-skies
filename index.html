@@ -169,8 +169,6 @@
   .qbtn.qactive{border-color:var(--amber);color:var(--amber)}
   #banner-controls{display:inline-block;margin-top:14px;padding:10px 12px;background:rgba(4,12,20,.78);border:1px solid var(--line);backdrop-filter:blur(3px)}
   #banner-controls .btn{font-size:11.5px;padding:7px 12px;letter-spacing:.1em;margin:2px}
-  .banner-qrow{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:8px}
-  .banner-qrow span{font-size:10px;letter-spacing:.18em;color:#8fb7c4;margin-right:2px}
   body.touch #banner-controls .btn{min-height:44px}
   #banner-main{font-size:clamp(20px,5vw,34px);font-weight:700;letter-spacing:.22em;color:#fff;text-shadow:0 0 18px rgba(255,180,84,.7)}
   #banner-sub{font-size:clamp(11px,2.6vw,14px);letter-spacing:.3em;color:var(--amber);margin-top:5px}
@@ -276,7 +274,7 @@
   <div id="lockbox"><div class="lk">◈ LOCKED — FIRE MISSILE</div></div>
   <div id="lockprog"></div>
   <div id="hitmarker">✕</div>
-  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><div id="banner-controls" class="hidden"><button id="btn-end-pause" class="btn ghost small hidden">✕ End Sortie</button><button id="btn-fs-pause" class="btn ghost small">⛶ Fullscreen</button><div class="banner-qrow"><span>GRAPHICS</span><button class="btn ghost small qbtn" data-q="low">LOW</button><button class="btn ghost small qbtn" data-q="med">MED</button><button class="btn ghost small qbtn" data-q="high">HIGH</button><button id="btn-mute" class="btn ghost small mutebtn">🔊 SOUND ON</button></div></div></div>
+  <div id="banner" class="hidden"><div id="banner-main"></div><div id="banner-sub"></div><div id="banner-controls" class="hidden"><button id="btn-end-pause" class="btn ghost small hidden">✕ End Sortie</button><button id="btn-fs-pause" class="btn ghost small">⛶ Fullscreen</button><button id="btn-mute" class="btn ghost small mutebtn">🔊 SOUND ON</button></div></div>
   <div id="warning" class="hidden">⚠ WARNING ⚠</div>
 </div>
 
@@ -417,7 +415,7 @@
     <div class="rowline"><span>Graphics quality</span><span><button class="btn ghost small qbtn" data-q="low">LOW</button> <button class="btn ghost small qbtn" data-q="med">MED</button> <button class="btn ghost small qbtn" data-q="high">HIGH</button></span></div>
     <div class="rowline"><span>Sound</span><button id="btn-mute-2" class="btn ghost small mutebtn">🔊 SOUND ON</button></div>
     <div class="rowline"><span>Display</span><button id="btn-fs-settings" class="btn ghost small">⛶ FULLSCREEN</button></div>
-    <p class="obj" style="margin-top:10px">LOW suits older phones: lower resolution, fewer particles, no sun glow or god rays. HIGH is full quality. Changes apply instantly, are remembered, and can also be changed mid-flight from the pause menu.</p>
+    <p class="obj" style="margin-top:10px">LOW suits older phones: lower resolution, fewer particles, no sun glow or god rays. HIGH is full quality. Changes apply instantly and are remembered.</p>
     <div class="center"><button class="btn ghost" id="btn-settings-back">← Back to Hangar</button></div>
   </div>
 </div>
